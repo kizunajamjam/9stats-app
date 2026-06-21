@@ -33,6 +33,7 @@ function loadState() {
     try {
         const parsed = JSON.parse(saved);
         if (!Array.isArray(parsed.players) || parsed.players.length !== 9) return false;
+        if (!parsed.players.every(p => p.other && p.receive.D !== undefined)) return false;
         state.scores = parsed.scores;
         state.isSecondServe = parsed.isSecondServe;
         state.players = parsed.players;
@@ -51,10 +52,11 @@ function initMatch() {
         state.players.push({
             id: i,
             name: defaultPlayerNames[i],
-            serve: { P: 0, M: 0, A: 0 },   // 得点 / エラー / 成功 (A: Attempt/Success)
-            attack: { A: 0, B: 0, C: 0, D: 0 }, // 得点 / 被ブロック / ミス / その他
-            receive: { A: 0, B: 0, C: 0 }, // ス / P / M (A: 優 / B: 良 / C: 誤)
-            block: { P: 0, T: 0, M: 0 }    // 得点 / ワンタッチ / ミス
+            serve: { P: 0, M: 0, A: 0 },   // エース / 失点 / 成功 (A: 成功してラリー継続)
+            attack: { P: 0, M: 0 },        // スパイクポイント / スパイク失点
+            receive: { A: 0, B: 0, C: 0, D: 0 }, // 優(セッター不動) / 良(セッター動) / 可(アンダー・二段) / 不可(失点)
+            block: { P: 0, M: 0 },         // ブロックポイント / ブロック失点（アウト・吸い込み）
+            other: { P: 0, M: 0 }          // その他得点（セッターツーアタック等） / その他ミス（ダブルコンタクト・キャッチ・タッチネット等）
         });
     }
 
@@ -95,15 +97,15 @@ function renderPlayers() {
         row.className = "player-row";
         
         // アタック決定率の計算
-        const totalAttack = player.attack.A + player.attack.B + player.attack.C + player.attack.D;
-        const attackRate = totalAttack > 0 ? ((player.attack.A / totalAttack) * 100).toFixed(1) : "0.0";
+        const totalAttack = player.attack.P + player.attack.M;
+        const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
 
         row.innerHTML = `
             <div class="player-no">${idx + 1}</div>
             <div class="player-name-container">
                 <input type="text" class="player-name-input" value="${escapeHtml(player.name)}" onchange="updatePlayerName(${idx}, this.value)">
             </div>
-            
+
             <!-- サーブ -->
             <div class="btn-group btn-group-serve">
                 <button class="stat-btn point" onclick="recordServe(${idx}, 'P')">
@@ -116,26 +118,20 @@ function renderPlayers() {
                     <span class="count">${player.serve.A}</span>
                 </button>
             </div>
-            
+
             <!-- アタック -->
             <div class="btn-group btn-group-attack">
-                <button class="stat-btn point" onclick="recordAttack(${idx}, 'A')">
-                    <span class="count">${player.attack.A}</span>
+                <button class="stat-btn point" onclick="recordAttack(${idx}, 'P')">
+                    <span class="count">${player.attack.P}</span>
                 </button>
-                <button class="stat-btn blocked" onclick="recordAttack(${idx}, 'B')">
-                    <span class="count">${player.attack.B}</span>
-                </button>
-                <button class="stat-btn miss" onclick="recordAttack(${idx}, 'C')">
-                    <span class="count">${player.attack.C}</span>
-                </button>
-                <button class="stat-btn" onclick="recordAttack(${idx}, 'D')">
-                    <span class="count">${player.attack.D}</span>
+                <button class="stat-btn miss" onclick="recordAttack(${idx}, 'M')">
+                    <span class="count">${player.attack.M}</span>
                 </button>
             </div>
-            
+
             <!-- 決定率 -->
             <div class="attack-rate-display" id="rate-${idx}">${attackRate}%</div>
-            
+
             <!-- レシーブ -->
             <div class="btn-group btn-group-receive">
                 <button class="stat-btn a" onclick="recordReceive(${idx}, 'A')">
@@ -147,18 +143,28 @@ function renderPlayers() {
                 <button class="stat-btn c" onclick="recordReceive(${idx}, 'C')">
                     <span class="count">${player.receive.C}</span>
                 </button>
+                <button class="stat-btn miss" onclick="recordReceive(${idx}, 'D')">
+                    <span class="count">${player.receive.D}</span>
+                </button>
             </div>
-            
+
             <!-- ブロック -->
             <div class="btn-group btn-group-block">
                 <button class="stat-btn point" onclick="recordBlock(${idx}, 'P')">
                     <span class="count">${player.block.P}</span>
                 </button>
-                <button class="stat-btn touch" onclick="recordBlock(${idx}, 'T')">
-                    <span class="count">${player.block.T}</span>
-                </button>
                 <button class="stat-btn miss" onclick="recordBlock(${idx}, 'M')">
                     <span class="count">${player.block.M}</span>
+                </button>
+            </div>
+
+            <!-- その他 -->
+            <div class="btn-group btn-group-other">
+                <button class="stat-btn point" onclick="recordOther(${idx}, 'P')">
+                    <span class="count">${player.other.P}</span>
+                </button>
+                <button class="stat-btn miss" onclick="recordOther(${idx}, 'M')">
+                    <span class="count">${player.other.M}</span>
                 </button>
             </div>
         `;
@@ -255,48 +261,64 @@ function recordServe(playerIdx, type) {
     saveState();
 }
 
-// アタック記録
+// アタック記録（スパイクポイント / スパイク失点）
 function recordAttack(playerIdx, type) {
     const player = state.players[playerIdx];
     player.attack[type] += 1;
-    
-    if (type === 'A') {
-        adjustScore('home', 1); // アタック得点
-    } else if (type === 'B' || type === 'C') {
-        adjustScore('away', 1); // アタック失点（被ブロック/ミス）
+
+    if (type === 'P') {
+        adjustScore('home', 1); // スパイクポイント
+    } else if (type === 'M') {
+        adjustScore('away', 1); // スパイク失点
     }
-    
+
     resetServeState();
     renderPlayers();
     saveState();
 }
 
-// レシーブ記録
+// レシーブ記録（A:優 / B:良 / C:可 / D:不可=失点）
 function recordReceive(playerIdx, type) {
     const player = state.players[playerIdx];
     player.receive[type] += 1;
-    
-    // レシーブエラー（不可）は相手得点
-    if (type === 'C') {
+
+    // レシーブ不可（D）は相手得点
+    if (type === 'D') {
         adjustScore('away', 1);
     }
-    
+
     resetServeState();
     renderPlayers();
     saveState();
 }
 
-// ブロック記録
+// ブロック記録（ブロックポイント / ブロック失点）
 function recordBlock(playerIdx, type) {
     const player = state.players[playerIdx];
     player.block[type] += 1;
-    
+
     if (type === 'P') {
-        adjustScore('home', 1); // ブロック得点
+        adjustScore('home', 1); // ブロックポイント
     } else if (type === 'M') {
-        adjustScore('away', 1); // 吸い込みミス等による失点
+        adjustScore('away', 1); // ブロック失点（アウト・吸い込み等）
     }
-    
+
+    resetServeState();
+    renderPlayers();
+    saveState();
+}
+
+// その他記録（セッターツーアタック等の得点 / ダブルコンタクト・キャッチ・タッチネット等のミス）
+function recordOther(playerIdx, type) {
+    const player = state.players[playerIdx];
+    player.other[type] += 1;
+
+    if (type === 'P') {
+        adjustScore('home', 1);
+    } else if (type === 'M') {
+        adjustScore('away', 1);
+    }
+
     resetServeState();
     renderPlayers();
     saveState();
@@ -323,20 +345,21 @@ function exportCSV() {
     let csvContent = "data:text/csv;charset=utf-8,";
 
     // ヘッダー行
-    csvContent += "選手名,サーブ得点(P),サーブ失策(M),サーブ成功(A),アタック得点(A),アタック被ブ(B),アタック失策(C),アタック他(D),アタック決定率(%),レシーブ優(A),レシーブ良(B),レシーブ不可(C),ブロック得点(P),ブロックワンタッチ(T),ブロック吸込失策(M)\n";
+    csvContent += "選手名,サーブエース(P),サーブ失点(M),サーブ成功(A),スパイク得点(P),スパイク失点(M),スパイク決定率(%),レシーブ優(A),レシーブ良(B),レシーブ可(C),レシーブ不可(D),ブロック得点(P),ブロック失点(M),その他得点(P),その他ミス(M)\n";
 
     // 選手データ
     state.players.forEach(player => {
-        const totalAttack = player.attack.A + player.attack.B + player.attack.C + player.attack.D;
-        const attackRate = totalAttack > 0 ? ((player.attack.A / totalAttack) * 100).toFixed(1) : "0.0";
+        const totalAttack = player.attack.P + player.attack.M;
+        const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
 
         const row = [
             csvField(player.name),
             player.serve.P, player.serve.M, player.serve.A,
-            player.attack.A, player.attack.B, player.attack.C, player.attack.D,
+            player.attack.P, player.attack.M,
             attackRate,
-            player.receive.A, player.receive.B, player.receive.C,
-            player.block.P, player.block.T, player.block.M
+            player.receive.A, player.receive.B, player.receive.C, player.receive.D,
+            player.block.P, player.block.M,
+            player.other.P, player.other.M
         ].join(",");
 
         csvContent += row + "\n";
