@@ -1,0 +1,360 @@
+:root {
+    --bg-gradient: #0f172a;
+    --card-bg: rgba(255, 255, 255, 0.02);
+    --card-border: rgba(255, 255, 255, 0.05);
+    --card-hover-bg: rgba(255, 255, 255, 0.04);
+    --text-primary: #f8fafc;
+    --text-secondary: #64748b;
+    --accent-blue: #3b82f6;
+    --accent-blue-hover: #60a5fa;
+    --accent-green: #10b981;
+    --accent-red: #ef4444;
+    --accent-orange: #f59e0b;
+    --btn-bg: transparent;
+    --btn-border: rgba(255, 255, 255, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation; /* ダブルタップズームを防止 */
+}
+
+body {
+    font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+    background: var(--bg-gradient);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden; /* 画面全体のスクロールを防ぐ */
+    touch-action: manipulation;
+}
+
+/* 縦画面時の警告表示 */
+.portrait-warning {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #0f172a;
+    z-index: 9999;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.portrait-warning-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    animation: rotateHint 2s infinite ease-in-out;
+}
+
+@keyframes rotateHint {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(-90deg); }
+}
+
+@media (orientation: portrait) {
+    .portrait-warning {
+        display: flex;
+    }
+    .app-container {
+        display: none;
+    }
+}
+
+.app-container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 12px;
+    box-sizing: border-box;
+    justify-content: space-between;
+}
+
+/* 最小の1行ヘッダーのスタイリング */
+.app-header {
+    height: 8vh;
+    border-bottom: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.header-minimal-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.app-title-mini {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.score-board-mini {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.score-side-label {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+}
+
+.score-val-mini {
+    font-size: 1.1rem;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+}
+
+.score-btn-mini {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sets-mini {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin: 0 4px;
+}
+
+.serve-indicator-mini {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.serve-text-mini {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.header-actions-mini {
+    display: flex;
+    gap: 4px;
+}
+
+.action-btn-mini {
+    font-family: inherit;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 3px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.action-btn-mini.primary {
+    background: var(--accent-blue);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* スタッツ記録エリア */
+.stats-workspace {
+    width: 100%;
+    height: 90vh; /* ヘッダー以外の全領域を使用 */
+    overflow: hidden; /* 横スクロール・縦スクロール両方を禁止 */
+    margin-bottom: 0px;
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+}
+
+.stats-table-header {
+    display: grid;
+    grid-template-columns: 24px 50px 3fr 4fr 38px 3fr 3fr;
+    gap: 4px;
+    padding: 6px 6px;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    border-bottom: 1px solid var(--card-border);
+    text-align: center;
+    position: sticky;
+    top: 0;
+    background: #0f172a;
+    z-index: 10;
+}
+
+.players-list {
+    display: flex;
+    flex-direction: column;
+}
+
+/* 選手行 */
+.player-row {
+    display: grid;
+    grid-template-columns: 24px 50px 3fr 4fr 38px 3fr 3fr;
+    gap: 4px;
+    align-items: center;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--card-border);
+    padding: 2px 6px;
+    height: calc((90vh - 35px) / 9); /* 90vhの記録エリアからヘッダー分を引いた高さを9等分 */
+    min-height: 34px;
+    box-sizing: border-box;
+}
+
+.player-row:last-child {
+    border-bottom: none;
+}
+
+.player-row:hover {
+    background: var(--card-hover-bg);
+}
+
+.player-no {
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.player-name-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    width: 100%;
+    padding: 2px 0;
+    text-align: center;
+    border-radius: 4px;
+}
+
+.player-name-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom-style: solid;
+}
+
+/* ボタンコントロール群 */
+.btn-group {
+    display: flex;
+    gap: 2px;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+}
+
+.stat-btn {
+    flex: 1;
+    height: 90%;
+    min-height: 24px;
+    border-radius: 4px;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: inherit;
+}
+
+.stat-btn .count {
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+/* 各種アクション色分け */
+.btn-group-serve .stat-btn.point:active { background: var(--accent-green); }
+.btn-group-serve .stat-btn.miss:active { background: var(--accent-red); }
+
+.btn-group-attack .stat-btn.point:active { background: var(--accent-green); }
+.btn-group-attack .stat-btn.blocked:active { background: #7c3aed; }
+.btn-group-attack .stat-btn.miss:active { background: var(--accent-red); }
+
+.btn-group-receive .stat-btn.a:active { background: var(--accent-green); }
+.btn-group-receive .stat-btn.b:active { background: var(--accent-orange); }
+.btn-group-receive .stat-btn.c:active { background: var(--accent-red); }
+
+.btn-group-block .stat-btn.point:active { background: var(--accent-green); }
+.btn-group-block .stat-btn.touch:active { background: var(--accent-blue); }
+.btn-group-block .stat-btn.miss:active { background: var(--accent-red); }
+
+/* ホバー視覚効果 */
+.stat-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.stat-btn:active {
+    transform: scale(0.95);
+}
+
+/* アタック決定率表示 */
+.attack-rate-display {
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #60a5fa;
+}
+
+/* フッター */
+.app-footer {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    border-top: 1px solid var(--card-border);
+    padding-top: 4px;
+    height: 8vh;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--accent-blue);
+    box-shadow: 0 0 6px var(--accent-blue);
+}
+
+.status-dot.second-serve {
+    background-color: var(--accent-orange);
+    box-shadow: 0 0 6px var(--accent-orange);
+}
+
+.help-hint {
+    display: none; /* スマホの縦幅を節約するため非表示に */
+}
+

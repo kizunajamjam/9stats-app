@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>9stats</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- 縦画面時の警告 -->
+    <div class="portrait-warning">
+        <div class="portrait-warning-icon">📱</div>
+        <p>画面を横向きに回転させて使用してください</p>
+    </div>
+
+    <div class="app-container">
+        <!-- ヘッダーエリア（最小の1行） -->
+        <header class="app-header">
+            <div class="header-minimal-row">
+                <span class="app-title-mini">9stats</span>
+                
+                <div class="score-board-mini">
+                    <span class="score-side-label">自:</span>
+                    <button class="score-btn-mini" onclick="adjustScore('home', -1)">-</button>
+                    <span id="score-home" class="score-val-mini">0</span>
+                    <button class="score-btn-mini" onclick="adjustScore('home', 1)">+</button>
+                    
+                    <span class="sets-mini">(<span id="sets-home">0</span>-<span id="sets-away">0</span>)</span>
+                    
+                    <span class="score-side-label">相:</span>
+                    <button class="score-btn-mini" onclick="adjustScore('away', -1)">-</button>
+                    <span id="score-away" class="score-val-mini">0</span>
+                    <button class="score-btn-mini" onclick="adjustScore('away', 1)">+</button>
+                </div>
+                
+                <div class="serve-indicator-mini">
+                    <span class="status-dot" id="serve-status-dot"></span>
+                    <span id="serve-status-text" class="serve-text-mini">1st</span>
+                </div>
+                
+                <div class="header-actions-mini">
+                    <button class="action-btn-mini" onclick="resetMatch()">R</button>
+                    <button class="action-btn-mini primary" onclick="exportCSV()">CSV</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- メイングリッドエリア -->
+        <main class="stats-workspace">
+            <div class="stats-table-header">
+                <div class="col-no">No</div>
+                <div class="col-name">選手</div>
+                <div class="col-serve">サ</div>
+                <div class="col-attack">ア</div>
+                <div class="col-attack-rate">%</div>
+                <div class="col-receive">レ</div>
+                <div class="col-block">ブ</div>
+            </div>
+            
+            <div class="players-list" id="players-list">
+                <!-- JavaScriptで9人分の行を動的に挿入します -->
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
