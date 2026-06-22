@@ -33,16 +33,16 @@
 
                 <div class="score-board-mini">
                     <span class="score-side-label">自:</span>
-                    <button class="score-btn-mini" onclick="adjustScore('home', -1)">-</button>
+                    <button class="score-btn-mini" onclick="manualAdjustScore('home', -1)">-</button>
                     <span id="score-home" class="score-val-mini">0</span>
-                    <button class="score-btn-mini" onclick="adjustScore('home', 1)">+</button>
+                    <button class="score-btn-mini" onclick="manualAdjustScore('home', 1)">+</button>
 
                     <span class="sets-mini">(<span id="sets-home">0</span>-<span id="sets-away">0</span>)</span>
 
                     <span class="score-side-label">相:</span>
-                    <button class="score-btn-mini" onclick="adjustScore('away', -1)">-</button>
+                    <button class="score-btn-mini" onclick="manualAdjustScore('away', -1)">-</button>
                     <span id="score-away" class="score-val-mini">0</span>
-                    <button class="score-btn-mini" onclick="adjustScore('away', 1)">+</button>
+                    <button class="score-btn-mini" onclick="manualAdjustScore('away', 1)">+</button>
                 </div>
 
                 <div class="serve-indicator-mini">
@@ -51,6 +51,7 @@
                 </div>
 
                 <div class="header-actions-mini">
+                    <button class="action-btn-mini" id="undo-btn" onclick="undoLastAction()" disabled>戻す</button>
                     <button class="action-btn-mini" onclick="resetMatch()">R</button>
                     <button class="action-btn-mini primary" onclick="exportCSV()">CSV</button>
                 </div>
@@ -124,7 +125,6 @@
                     <span>状態</span>
                     <span>番</span>
                     <span>名前</span>
-                    <span></span>
                 </div>
                 <div id="roster-list"></div>
             </div>

@@ -27,6 +27,46 @@ const defaultPlayerNames = [
 const STORAGE_KEY = "9stats_match_state";
 const HISTORY_KEY = "9stats_match_history";
 
+// --- Undo（直前の操作を最大UNDO_LIMIT件まで取り消せる） ---
+
+const UNDO_LIMIT = 15;
+const undoStack = [];
+
+// 操作前のスナップショットを記録
+function pushUndoSnapshot() {
+    undoStack.push(JSON.stringify({
+        scores: state.scores,
+        isSecondServe: state.isSecondServe,
+        roster: state.roster,
+        lineup: state.lineup
+    }));
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    updateUndoButtonState();
+}
+
+// 直前の操作を取り消す
+function undoLastAction() {
+    const snapshotJson = undoStack.pop();
+    if (!snapshotJson) return;
+    const snapshot = JSON.parse(snapshotJson);
+    state.scores = snapshot.scores;
+    state.isSecondServe = snapshot.isSecondServe;
+    state.roster = snapshot.roster;
+    state.lineup = snapshot.lineup;
+
+    saveState();
+    updateScoreUI();
+    renderPlayers();
+    updateServeIndicator();
+    updateUndoButtonState();
+}
+
+// Undoボタンの有効/無効を更新
+function updateUndoButtonState() {
+    const btn = document.getElementById("undo-btn");
+    if (btn) btn.disabled = undoStack.length === 0;
+}
+
 // --- 画面遷移（ホーム / 記録 / 設定 / 実績） ---
 
 const SCREEN_IDS = ["home-screen", "record-screen", "settings-screen", "history-screen"];
@@ -165,11 +205,6 @@ function getRosterMember(id) {
     return state.roster.find(p => p.id === id);
 }
 
-// 出場スロットの選手データを取得
-function getSlotPlayer(slotIndex) {
-    return getRosterMember(state.lineup[slotIndex]);
-}
-
 // 選手リストの描画（出場中の9スロット分）
 function renderPlayers() {
     const listContainer = document.getElementById("players-list");
@@ -280,11 +315,26 @@ function updateRosterName(rosterId, newName) {
     saveState();
 }
 
-// 背番号の変更保存
+// 背番号が他の選手と重複していないか確認
+function isNumberDuplicate(number, excludeRosterId) {
+    if (!number) return false; // 空欄は重複チェック対象外
+    return state.roster.some(p => p.id !== excludeRosterId && p.number === number);
+}
+
+// 背番号の変更保存（重複している場合は拒否する）
 function updateRosterNumber(rosterId, newNumber) {
     const player = getRosterMember(rosterId);
-    if (player) player.number = newNumber;
+    if (!player) return;
+
+    if (newNumber && isNumberDuplicate(newNumber, rosterId)) {
+        alert(`背番号「${newNumber}」は既に他の選手が使用しています。`);
+        renderRoster();
+        return;
+    }
+
+    player.number = newNumber;
     renderPlayers();
+    renderRoster();
     saveState();
 }
 
@@ -310,7 +360,6 @@ function renderRoster() {
             <span class="roster-status${inLineup ? " active" : ""}">${inLineup ? "出場" : "ベンチ"}</span>
             <input type="text" class="roster-number-input" value="${escapeHtml(player.number)}" placeholder="番号" onchange="updateRosterNumber(${player.id}, this.value)">
             <input type="text" class="roster-name-input" value="${escapeHtml(player.name)}" placeholder="選手名" onchange="updateRosterName(${player.id}, this.value)">
-            <button class="roster-delete-btn" onclick="removeRosterPlayer(${player.id})">×</button>
         `;
         rosterList.appendChild(row);
     });
@@ -323,16 +372,6 @@ function addRosterPlayer() {
     state.roster.push(member);
     saveState();
     renderRoster();
-}
-
-// 選手登録の削除（出場中の場合はそのスロットを空ける）
-function removeRosterPlayer(rosterId) {
-    if (!confirm("この選手を登録から削除しますか？（記録済みのスタッツも削除されます）")) return;
-    state.roster = state.roster.filter(p => p.id !== rosterId);
-    state.lineup = state.lineup.map(id => (id === rosterId ? null : id));
-    saveState();
-    renderRoster();
-    renderPlayers();
 }
 
 // --- 選手交代（出場スロットの入れ替え） ---
@@ -359,6 +398,7 @@ function closeSubPicker() {
 
 // 出場スロットの選手を入れ替える
 function substitutePlayer(slotIndex, rosterId) {
+    pushUndoSnapshot();
     state.lineup[slotIndex] = rosterId;
     saveState();
     renderPlayers();
@@ -373,7 +413,13 @@ function updateScoreUI() {
     document.getElementById("sets-away").innerText = state.scores.setsAway;
 }
 
-// 手動スコア調整
+// 手動スコア調整（ヘッダーの+/-ボタン用。Undoスナップショットを記録してから調整する）
+function manualAdjustScore(side, amount) {
+    pushUndoSnapshot();
+    adjustScore(side, amount);
+}
+
+// スコア調整の内部処理（スタッツ記録系からも呼ばれるため、ここではUndo記録は行わない）
 function adjustScore(side, amount) {
     state.scores[side] = Math.max(0, state.scores[side] + amount);
 
@@ -421,6 +467,7 @@ function resetServeState() {
 function recordServe(rosterId, type) {
     const player = getRosterMember(rosterId);
     if (!player) return;
+    pushUndoSnapshot();
 
     if (type === 'P') {
         // サーブ得点：得点加算、自チームに+1点、サーブ状態リセット
@@ -453,6 +500,7 @@ function recordServe(rosterId, type) {
 function recordAttack(rosterId, type) {
     const player = getRosterMember(rosterId);
     if (!player) return;
+    pushUndoSnapshot();
     player.attack[type] += 1;
 
     if (type === 'P') {
@@ -470,6 +518,7 @@ function recordAttack(rosterId, type) {
 function recordReceive(rosterId, type) {
     const player = getRosterMember(rosterId);
     if (!player) return;
+    pushUndoSnapshot();
     player.receive[type] += 1;
 
     // レシーブ不可（D）は相手得点
@@ -486,6 +535,7 @@ function recordReceive(rosterId, type) {
 function recordBlock(rosterId, type) {
     const player = getRosterMember(rosterId);
     if (!player) return;
+    pushUndoSnapshot();
     player.block[type] += 1;
 
     if (type === 'P') {
@@ -503,6 +553,7 @@ function recordBlock(rosterId, type) {
 function recordOther(rosterId, type) {
     const player = getRosterMember(rosterId);
     if (!player) return;
+    pushUndoSnapshot();
     player.other[type] += 1;
 
     if (type === 'P') {
@@ -519,6 +570,7 @@ function recordOther(rosterId, type) {
 // マッチリセット（選手登録・背番号・試合情報は保持し、スコアとスタッツのみ初期化）
 function resetMatch() {
     if (confirm("スコアとスタッツをリセットしますか？（選手登録・背番号・試合情報は保持されます）")) {
+        pushUndoSnapshot();
         state.scores = { home: 0, away: 0, setsHome: 0, setsAway: 0 };
         state.isSecondServe = false;
         state.roster.forEach(player => {
@@ -731,5 +783,6 @@ function showHistoryDetail(id) {
 // 初期化実行
 window.onload = function () {
     startMatch();
+    updateUndoButtonState();
     goHome();
 };

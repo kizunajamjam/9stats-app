@@ -516,7 +516,7 @@ body {
 .roster-header-row,
 .roster-row {
     display: grid;
-    grid-template-columns: 44px 56px 1fr 28px;
+    grid-template-columns: 44px 56px 1fr;
     gap: 8px;
     align-items: center;
     padding: 4px 0;
@@ -562,21 +562,6 @@ body {
 .roster-name-input:focus {
     outline: none;
     border-color: var(--accent-blue);
-}
-
-.roster-delete-btn {
-    font-size: 0.75rem;
-    color: var(--accent-red);
-    background: #ffffff;
-    border: 1px solid var(--btn-border);
-    border-radius: 4px;
-    width: 100%;
-    height: 24px;
-    cursor: pointer;
-}
-
-.roster-delete-btn:hover {
-    background: var(--card-hover-bg);
 }
 
 /* 実績画面（試合履歴） */
