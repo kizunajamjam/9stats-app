@@ -30,6 +30,8 @@ function showScreen(activeId) {
     SCREEN_IDS.forEach(id => {
         document.getElementById(id).style.display = (id === activeId) ? "flex" : "none";
     });
+    // 横向き固定（縦持ち時の回転）は記録画面のみに適用する
+    document.documentElement.classList.toggle("force-landscape", activeId === "record-screen");
 }
 
 function goHome() {
@@ -144,7 +146,7 @@ function renderPlayers() {
         const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
 
         row.innerHTML = `
-            <div class="player-no">${idx + 1}</div>
+            <div class="player-no">${player.number ? escapeHtml(player.number) : idx + 1}</div>
             <div class="player-name-container">
                 <input type="text" class="player-name-input" value="${escapeHtml(player.name)}" onchange="updatePlayerName(${idx}, this.value)">
             </div>
@@ -397,10 +399,23 @@ function recordOther(playerIdx, type) {
     saveState();
 }
 
-// マッチリセット
+// マッチリセット（選手名・背番号・試合情報は保持し、スコアとスタッツのみ初期化）
 function resetMatch() {
-    if (confirm("試合データをすべてリセットしますか？")) {
-        initMatch();
+    if (confirm("スコアとスタッツをリセットしますか？（選手名・背番号・試合情報は保持されます）")) {
+        state.scores = { home: 0, away: 0, setsHome: 0, setsAway: 0 };
+        state.isSecondServe = false;
+        state.players.forEach(player => {
+            player.serve = { P: 0, M: 0, A: 0 };
+            player.attack = { P: 0, M: 0 };
+            player.receive = { A: 0, B: 0, C: 0, D: 0 };
+            player.block = { P: 0, M: 0 };
+            player.other = { P: 0, M: 0 };
+        });
+
+        saveState();
+        updateScoreUI();
+        renderPlayers();
+        updateServeIndicator();
     }
 }
 

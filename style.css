@@ -40,14 +40,12 @@ body {
     touch-action: manipulation;
 }
 
-/* 縦持ちでも画面全体を回転させて強制的に横向き表示にする */
+/* 縦持ちでも記録画面だけは画面全体を回転させて強制的に横向き表示にする */
 @media screen and (orientation: portrait) {
-    :root {
+    html.force-landscape {
         /* 回転後は実際のvhとvwの役割が入れ替わるため、レイアウト計算用の単位を入れ替える */
         --vh: 1vw;
         --vw: 1vh;
-    }
-    html {
         transform: rotate(90deg);
         transform-origin: left top;
         width: 100vh;
