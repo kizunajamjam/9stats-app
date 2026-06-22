@@ -470,38 +470,30 @@ body {
     margin-bottom: 16px;
 }
 
-/* 使い方画面 */
+/* 使い方画面（見出し＋「ラベル: 説明」を並べるフラットなリスト形式） */
 .help-body {
     max-width: 520px;
 }
 
-.help-section {
-    margin-bottom: 16px;
-}
-
-.help-heading {
-    font-size: 0.8rem;
+.help-flat-heading {
+    font-size: 0.85rem;
     font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 6px;
+    margin-top: 18px;
+    margin-bottom: 8px;
 }
 
-.help-section p,
-.help-list {
+.help-flat-heading:first-child {
+    margin-top: 0;
+}
+
+.help-flat-item {
     font-size: 0.75rem;
     color: var(--text-secondary);
-    line-height: 1.6;
+    line-height: 1.7;
 }
 
-.help-list {
-    padding-left: 1.1em;
-}
-
-.help-list li {
-    margin-bottom: 4px;
-}
-
-.help-list strong {
+.help-flat-item strong {
     color: var(--text-primary);
 }
 
