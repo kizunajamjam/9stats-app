@@ -377,6 +377,8 @@ body {
 
 .home-menu {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 16px;
 }
 
@@ -466,6 +468,41 @@ body {
     color: var(--text-secondary);
     max-width: 420px;
     margin-bottom: 16px;
+}
+
+/* 使い方画面 */
+.help-body {
+    max-width: 520px;
+}
+
+.help-section {
+    margin-bottom: 16px;
+}
+
+.help-heading {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.help-section p,
+.help-list {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.help-list {
+    padding-left: 1.1em;
+}
+
+.help-list li {
+    margin-bottom: 4px;
+}
+
+.help-list strong {
+    color: var(--text-primary);
 }
 
 .roster-section {

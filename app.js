@@ -78,7 +78,7 @@ function updateUndoButtonState() {
 
 // --- 画面遷移（ホーム / 記録 / 設定 / 実績） ---
 
-const SCREEN_IDS = ["home-screen", "record-screen", "settings-screen", "history-screen"];
+const SCREEN_IDS = ["home-screen", "record-screen", "settings-screen", "history-screen", "help-screen"];
 
 function showScreen(activeId) {
     SCREEN_IDS.forEach(id => {
@@ -111,6 +111,10 @@ function goSettings() {
 function goHistory() {
     showHistoryList();
     showScreen("history-screen");
+}
+
+function goHelp() {
+    showScreen("help-screen");
 }
 
 // 試合状態の保存（試合中のリロード/再起動でデータを失わないようにする）

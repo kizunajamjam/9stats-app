@@ -22,6 +22,7 @@
             <button class="home-btn" onclick="goRecord()">記録</button>
             <button class="home-btn" onclick="goSettings()">設定</button>
             <button class="home-btn" onclick="goHistory()">実績</button>
+            <button class="home-btn" onclick="goHelp()">使い方</button>
         </div>
     </div>
 
@@ -147,6 +148,70 @@
                 <div id="history-detail-table"></div>
                 <button class="action-btn-mini primary" id="history-detail-csv-btn">CSV</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 使い方画面（全機能の説明） -->
+    <div class="screen settings-screen" id="help-screen">
+        <div class="settings-header">
+            <button class="action-btn-mini" onclick="goHome()">ホーム</button>
+            <span class="settings-title">使い方</span>
+        </div>
+        <div class="settings-body help-body">
+            <section class="help-section">
+                <h3 class="help-heading">ホーム画面</h3>
+                <p>「記録」「設定」「実績」「使い方」の4つの画面に移動できます。試合中は基本的に「記録」画面だけを使います。</p>
+            </section>
+
+            <section class="help-section">
+                <h3 class="help-heading">記録画面（ヘッダー）</h3>
+                <ul class="help-list">
+                    <li><strong>ホーム</strong>：ホーム画面に戻ります。</li>
+                    <li><strong>自 / 相 の − +</strong>：スコアを手動で増減します。設定したセット点数・デュース差の条件を満たすと「セットを終了しますか？」という確認が表示されます。</li>
+                    <li><strong>セットバッジ（①②③…）</strong>：タップでそのセットの記録を表示します。自チームが取ったセットは青、相手が取ったセットは橙、進行中のセットは無色です。表示中のセットには黒い枠がつきます。</li>
+                    <li><strong>1st / 2nd</strong>：サーブの状態です。1本目のサーブミスは失点になりませんが、2本目のミスで相手に点が入ります。</li>
+                    <li><strong>戻す</strong>：直前の操作を取り消します（最大15件まで）。</li>
+                    <li><strong>R</strong>：スコアとスタッツだけをリセットします。選手登録・背番号・試合情報は保持されます。</li>
+                    <li><strong>終了</strong>：試合を終えるときに使います。現在の記録（全セット通算）を実績に保存し、スコア・スタッツをリセットしてホームに戻ります。</li>
+                </ul>
+            </section>
+
+            <section class="help-section">
+                <h3 class="help-heading">記録画面（選手リスト）</h3>
+                <ul class="help-list">
+                    <li><strong>背番号ボタン</strong>：タップするとベンチ選手と交代できます（出場メンバーの削除はできません）。</li>
+                    <li><strong>選手名</strong>：記録画面では編集できません。変更は設定画面の選手登録から行います。</li>
+                    <li><strong>記録ボタン（12列）</strong>：サーブ（P得点／M失点）、レシーブ（A優／B良／C可／D不可=失点）、アタック（P得点／M失点）、ブロック（P得点／M失点）、その他（P得点／Mミス）の順に並んでいます。</li>
+                    <li>過去のセットを表示しているときは、ボタンは押せず数字の確認だけができます（閲覧専用）。</li>
+                </ul>
+            </section>
+
+            <section class="help-section">
+                <h3 class="help-heading">設定画面</h3>
+                <ul class="help-list">
+                    <li><strong>試合情報</strong>：日時・会場・自チーム名・対戦相手を入力できます。</li>
+                    <li><strong>セット点数 / デュース差</strong>：1セットの勝敗条件です。デュース差を0にすると、セット点数に達した時点で即セット終了になります。</li>
+                    <li><strong>先取セット数</strong>：この数のセットを先に取ったチームが出ると、試合終了の通知が表示されます（保存は手動で「終了」ボタンを押してください）。</li>
+                    <li><strong>選手登録</strong>：最大20名まで登録できます。背番号の重複は登録できません。登録した選手は削除できず、出場中の選手との交代のみ可能です。</li>
+                </ul>
+            </section>
+
+            <section class="help-section">
+                <h3 class="help-heading">実績画面</h3>
+                <ul class="help-list">
+                    <li>記録画面で「終了」を押すと保存された試合が一覧表示されます。各項目に最終更新日時が表示されます。</li>
+                    <li>項目をタップすると、その試合の選手別スタッツ（全セット通算）の詳細と、CSV出力ボタンが表示されます。</li>
+                    <li>「削除」ボタンでその試合の記録を消去できます（元に戻せません）。</li>
+                </ul>
+            </section>
+
+            <section class="help-section">
+                <h3 class="help-heading">データの保存について</h3>
+                <ul class="help-list">
+                    <li>記録中の試合データは操作するたびに自動でこの端末に保存されます。画面を閉じたりリロードしても記録は失われません。</li>
+                    <li>記録画面は縦持ちでも自動的に横向き表示に固定されます（他の画面は縦持ちのままで操作できます）。</li>
+                </ul>
+            </section>
         </div>
     </div>
 
