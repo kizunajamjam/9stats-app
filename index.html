@@ -109,8 +109,11 @@
 
                 <label class="settings-label" for="input-deuce-margin">デュース差</label>
                 <input class="settings-input" type="number" id="input-deuce-margin" min="0" onchange="updateRule('deuceMargin', this.value)">
+
+                <label class="settings-label" for="input-sets-to-win">先取セット数</label>
+                <input class="settings-input" type="number" id="input-sets-to-win" min="1" onchange="updateRule('setsToWin', this.value)">
             </div>
-            <p class="settings-hint">デュース差を0にすると、セット点数に達した時点で即セット終了します。</p>
+            <p class="settings-hint">デュース差を0にすると、セット点数に達した時点で即セット終了します。先取セット数に達すると試合終了の通知が表示されます。</p>
 
             <div class="roster-section">
                 <div class="roster-title-row">

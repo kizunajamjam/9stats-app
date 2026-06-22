@@ -13,7 +13,7 @@ const state = {
     lineup: [],   // 出場中9スロット分のroster idを格納する配列
     nextId: 0,    // 選手登録用の連番ID
     matchInfo: { date: "", venue: "", teamName: "", opponent: "" }, // 試合情報（日時・会場・チーム名）
-    rules: { targetScore: 21, deuceMargin: 2 }, // セットルール（点数・デュース差）
+    rules: { targetScore: 21, deuceMargin: 2, setsToWin: 2 }, // セットルール（点数・デュース差・試合に必要な先取セット数）
     sets: [],          // セットごとのスタッツ: [{ stats: { [rosterId]: statsObj }, lineup? }]
     currentSetIndex: 0, // 現在記録中（ライブ）のセット
     viewingSetIndex: 0, // 記録画面で表示中のセット（タブ切り替えで変わる）
@@ -103,6 +103,7 @@ function goSettings() {
     document.getElementById("input-opponent").value = state.matchInfo.opponent;
     document.getElementById("input-target-score").value = state.rules.targetScore;
     document.getElementById("input-deuce-margin").value = state.rules.deuceMargin;
+    document.getElementById("input-sets-to-win").value = state.rules.setsToWin;
     renderRoster();
     showScreen("settings-screen");
 }
@@ -141,8 +142,8 @@ function loadState() {
             : (parsed.roster.reduce((max, p) => Math.max(max, p.id), -1) + 1);
         state.matchInfo = parsed.matchInfo;
         state.rules = (parsed.rules && typeof parsed.rules.targetScore === "number" && typeof parsed.rules.deuceMargin === "number")
-            ? parsed.rules
-            : { targetScore: 21, deuceMargin: 2 };
+            ? { targetScore: parsed.rules.targetScore, deuceMargin: parsed.rules.deuceMargin, setsToWin: typeof parsed.rules.setsToWin === "number" ? parsed.rules.setsToWin : 2 }
+            : { targetScore: 21, deuceMargin: 2, setsToWin: 2 };
         state.sets = parsed.sets;
         state.currentSetIndex = parsed.currentSetIndex;
         state.viewingSetIndex = (typeof parsed.viewingSetIndex === "number" && parsed.viewingSetIndex >= 0 && parsed.viewingSetIndex < parsed.sets.length)
@@ -203,7 +204,7 @@ function initMatch() {
         teamName: "",
         opponent: ""
     };
-    state.rules = { targetScore: 21, deuceMargin: 2 };
+    state.rules = { targetScore: 21, deuceMargin: 2, setsToWin: 2 };
     state.sets = [{ stats: {} }];
     state.currentSetIndex = 0;
     state.viewingSetIndex = 0;
@@ -372,14 +373,15 @@ function updateMatchInfo(field, value) {
     saveState();
 }
 
-// セットルール（点数・デュース差）の変更保存
+// セットルール（点数・デュース差・先取セット数）の変更保存
 function updateRule(field, value) {
     let num = parseInt(value, 10);
     if (isNaN(num)) {
-        num = field === "targetScore" ? 21 : 2;
+        num = field === "targetScore" ? 21 : (field === "setsToWin" ? 2 : 0);
     }
     if (field === "targetScore" && num < 1) num = 1;
     if (field === "deuceMargin" && num < 0) num = 0;
+    if (field === "setsToWin" && num < 1) num = 1;
     state.rules[field] = num;
     saveState();
 }
@@ -482,6 +484,11 @@ function adjustScore(side, amount) {
             state.sets.push({ stats: {} });
             state.currentSetIndex += 1;
             state.viewingSetIndex = state.currentSetIndex;
+
+            // 先取セット数に達したら試合終了を通知する（保存・リセットは「終了」ボタンで行う）
+            if (state.scores.setsHome >= state.rules.setsToWin || state.scores.setsAway >= state.rules.setsToWin) {
+                alert(`試合終了です！（セット ${state.scores.setsHome}-${state.scores.setsAway}）\n「終了」ボタンで記録を保存してください。`);
+            }
         }
     }
 
