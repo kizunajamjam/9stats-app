@@ -240,7 +240,7 @@ function renderPlayers() {
         row.innerHTML = `
             <button class="player-no-btn" onclick="openSubPicker(${idx})">${escapeHtml(player.number)}</button>
             <div class="player-name-container">
-                <input type="text" class="player-name-input" value="${escapeHtml(player.name)}" onchange="updateRosterName(${player.id}, this.value)">
+                <span class="player-name-display">${escapeHtml(player.name)}</span>
             </div>
 
             <!-- サービス: エース / 失点 -->
