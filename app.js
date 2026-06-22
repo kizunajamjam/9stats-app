@@ -16,7 +16,8 @@ const state = {
     rules: { targetScore: 21, deuceMargin: 2 }, // セットルール（点数・デュース差）
     sets: [],          // セットごとのスタッツ: [{ stats: { [rosterId]: statsObj }, lineup? }]
     currentSetIndex: 0, // 現在記録中（ライブ）のセット
-    viewingSetIndex: 0  // 記録画面で表示中のセット（タブ切り替えで変わる）
+    viewingSetIndex: 0, // 記録画面で表示中のセット（タブ切り替えで変わる）
+    historyId: null     // 現在の試合を保存した実績レコードのid（再保存は新規追加せず上書きする）
 };
 
 const MAX_ROSTER_SIZE = 20;
@@ -147,6 +148,7 @@ function loadState() {
         state.viewingSetIndex = (typeof parsed.viewingSetIndex === "number" && parsed.viewingSetIndex >= 0 && parsed.viewingSetIndex < parsed.sets.length)
             ? parsed.viewingSetIndex
             : parsed.currentSetIndex;
+        state.historyId = typeof parsed.historyId === "number" ? parsed.historyId : null;
         return true;
     } catch (e) {
         return false;
@@ -205,6 +207,7 @@ function initMatch() {
     state.sets = [{ stats: {} }];
     state.currentSetIndex = 0;
     state.viewingSetIndex = 0;
+    state.historyId = null;
 
     for (let i = 0; i < LINEUP_SIZE; i++) {
         const member = createRosterMember(defaultPlayerNames[i], "");
@@ -621,6 +624,7 @@ function resetScoresAndStats() {
     state.sets = [{ stats: {} }];
     state.currentSetIndex = 0;
     state.viewingSetIndex = 0;
+    state.historyId = null;
 }
 
 // マッチリセット（選手登録・背番号・試合情報は保持し、スコアとスタッツのみ初期化）
@@ -748,16 +752,26 @@ function computeTotalsForRoster(roster, sets) {
 }
 
 // 現在記録中の試合を履歴に保存する（選手スタッツは全セット通算）。実績画面・試合終了の両方から呼ばれる
+// 同じ試合を再度保存した場合は新規レコードを追加せず、既存レコードを上書き更新する
 function saveMatchSnapshotToHistory() {
     const history = loadHistory();
-    history.unshift({
-        id: Date.now(),
+    const snapshot = {
         updatedAt: new Date().toISOString(),
         matchInfo: JSON.parse(JSON.stringify(state.matchInfo)),
         scores: JSON.parse(JSON.stringify(state.scores)),
         roster: computeTotalsForRoster(state.roster, state.sets)
-    });
+    };
+
+    const existingIndex = state.historyId !== null ? history.findIndex(m => m.id === state.historyId) : -1;
+    if (existingIndex !== -1) {
+        history[existingIndex] = { id: state.historyId, ...snapshot };
+    } else {
+        state.historyId = Date.now();
+        history.unshift({ id: state.historyId, ...snapshot });
+    }
+
     saveHistory(history);
+    saveState();
 }
 
 // 保存日時の表示用フォーマット（未保存・不正な値は"-"を返す）
