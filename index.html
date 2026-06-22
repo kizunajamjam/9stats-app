@@ -15,33 +15,42 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container">
+    <!-- ホーム画面 -->
+    <div class="screen home-screen" id="home-screen">
+        <div class="home-title">9stats</div>
+        <div class="home-menu">
+            <button class="home-btn" onclick="goRecord()">記録</button>
+            <button class="home-btn" onclick="goSettings()">設定</button>
+            <button class="home-btn" onclick="goHistory()">実績</button>
+        </div>
+    </div>
+
+    <div class="screen app-container" id="record-screen">
         <!-- ヘッダーエリア（最小の1行） -->
         <header class="app-header">
             <div class="header-minimal-row">
-                <span class="app-title-mini">9stats</span>
-                
+                <button class="action-btn-mini" onclick="goHome()">戻る</button>
+
                 <div class="score-board-mini">
                     <span class="score-side-label">自:</span>
                     <button class="score-btn-mini" onclick="adjustScore('home', -1)">-</button>
                     <span id="score-home" class="score-val-mini">0</span>
                     <button class="score-btn-mini" onclick="adjustScore('home', 1)">+</button>
-                    
+
                     <span class="sets-mini">(<span id="sets-home">0</span>-<span id="sets-away">0</span>)</span>
-                    
+
                     <span class="score-side-label">相:</span>
                     <button class="score-btn-mini" onclick="adjustScore('away', -1)">-</button>
                     <span id="score-away" class="score-val-mini">0</span>
                     <button class="score-btn-mini" onclick="adjustScore('away', 1)">+</button>
                 </div>
-                
+
                 <div class="serve-indicator-mini">
                     <span class="status-dot" id="serve-status-dot"></span>
                     <span id="serve-status-text" class="serve-text-mini">1st</span>
                 </div>
-                
+
                 <div class="header-actions-mini">
-                    <button class="action-btn-mini" onclick="openSettings()">設定</button>
                     <button class="action-btn-mini" onclick="resetMatch()">R</button>
                     <button class="action-btn-mini primary" onclick="exportCSV()">CSV</button>
                 </div>
@@ -86,9 +95,9 @@
     </div>
 
     <!-- 試合設定画面（選手名・背番号・チーム名・日時・会場） -->
-    <div class="settings-screen" id="settings-screen">
+    <div class="screen settings-screen" id="settings-screen">
         <div class="settings-header">
-            <button class="action-btn-mini" onclick="closeSettings()">戻る</button>
+            <button class="action-btn-mini" onclick="goHome()">戻る</button>
             <span class="settings-title">試合設定</span>
         </div>
         <div class="settings-body">
@@ -114,6 +123,28 @@
                     <span class="roster-col-name">名前</span>
                 </div>
                 <div id="roster-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 実績画面（試合履歴の保存・一覧・詳細） -->
+    <div class="screen settings-screen" id="history-screen">
+        <div class="settings-header">
+            <button class="action-btn-mini" onclick="goHome()">戻る</button>
+            <span class="settings-title">実績</span>
+        </div>
+        <div class="settings-body">
+            <button class="action-btn-mini primary" onclick="saveCurrentMatchToHistory()">現在の試合を保存</button>
+
+            <div id="history-list-view">
+                <div id="history-list"></div>
+            </div>
+
+            <div id="history-detail-view" style="display: none;">
+                <button class="action-btn-mini" onclick="showHistoryList()">一覧に戻る</button>
+                <div id="history-detail-summary"></div>
+                <div id="history-detail-table"></div>
+                <button class="action-btn-mini primary" id="history-detail-csv-btn">CSV</button>
             </div>
         </div>
     </div>

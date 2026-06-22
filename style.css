@@ -26,6 +26,11 @@
     touch-action: manipulation; /* ダブルタップズームを防止 */
 }
 
+/* 画面切り替え（ホーム・記録・設定・実績）の基本設定。表示はJSがstyle.displayで制御する */
+.screen {
+    display: none;
+}
+
 body {
     font-family: 'Outfit', 'Noto Sans JP', sans-serif;
     background: var(--bg-gradient);
@@ -354,9 +359,47 @@ body {
     display: none; /* スマホの縦幅を節約するため非表示に */
 }
 
-/* 試合設定画面 */
+/* ホーム画面 */
+.home-screen {
+    width: calc(100 * var(--vw));
+    height: calc(100 * var(--vh));
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    background: #ffffff;
+}
+
+.home-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.home-menu {
+    display: flex;
+    gap: 16px;
+}
+
+.home-btn {
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 14px 28px;
+    border-radius: 10px;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.home-btn:hover {
+    background: var(--card-hover-bg);
+    border-color: var(--accent-blue-hover);
+}
+
+/* 試合設定画面・実績画面（共通の全画面オーバーレイ） */
 .settings-screen {
-    display: none;
     position: fixed;
     top: 0;
     left: 0;
@@ -367,10 +410,6 @@ body {
     flex-direction: column;
     box-sizing: border-box;
     padding: 8px 12px;
-}
-
-.settings-screen.open {
-    display: flex;
 }
 
 .settings-header {
@@ -475,4 +514,81 @@ body {
 .roster-name-input:focus {
     outline: none;
     border-color: var(--accent-blue);
+}
+
+/* 実績画面（試合履歴） */
+#history-list-view {
+    margin-top: 12px;
+}
+
+.history-empty-msg {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 8px;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    cursor: pointer;
+    max-width: 460px;
+}
+
+.history-item:hover {
+    background: var(--card-hover-bg);
+}
+
+.history-item-info {
+    font-size: 0.75rem;
+    line-height: 1.5;
+}
+
+.history-item-info .history-item-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.history-item-delete {
+    font-size: 0.65rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--btn-border);
+    background: #ffffff;
+    color: var(--accent-red);
+    cursor: pointer;
+}
+
+#history-detail-view {
+    margin-top: 12px;
+}
+
+#history-detail-summary {
+    font-size: 0.8rem;
+    line-height: 1.6;
+    margin: 10px 0;
+}
+
+.history-detail-table-wrap table {
+    border-collapse: collapse;
+    font-size: 0.7rem;
+    margin-bottom: 12px;
+}
+
+.history-detail-table-wrap th,
+.history-detail-table-wrap td {
+    border: 1px solid var(--card-border);
+    padding: 4px 6px;
+    text-align: center;
+}
+
+.history-detail-table-wrap th {
+    background: var(--card-hover-bg);
+    color: var(--text-secondary);
 }

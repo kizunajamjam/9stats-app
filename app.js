@@ -20,6 +20,39 @@ const defaultPlayerNames = [
 ];
 
 const STORAGE_KEY = "9stats_match_state";
+const HISTORY_KEY = "9stats_match_history";
+
+// --- 画面遷移（ホーム / 記録 / 設定 / 実績） ---
+
+const SCREEN_IDS = ["home-screen", "record-screen", "settings-screen", "history-screen"];
+
+function showScreen(activeId) {
+    SCREEN_IDS.forEach(id => {
+        document.getElementById(id).style.display = (id === activeId) ? "flex" : "none";
+    });
+}
+
+function goHome() {
+    showScreen("home-screen");
+}
+
+function goRecord() {
+    showScreen("record-screen");
+}
+
+function goSettings() {
+    document.getElementById("input-date").value = state.matchInfo.date;
+    document.getElementById("input-venue").value = state.matchInfo.venue;
+    document.getElementById("input-team").value = state.matchInfo.teamName;
+    document.getElementById("input-opponent").value = state.matchInfo.opponent;
+    renderRoster();
+    showScreen("settings-screen");
+}
+
+function goHistory() {
+    showHistoryList();
+    showScreen("history-screen");
+}
 
 // 試合状態の保存（試合中のリロード/再起動でデータを失わないようにする）
 function saveState() {
@@ -182,9 +215,10 @@ function renderPlayers() {
     });
 }
 
-// 選手名の変更保存
+// 選手名の変更保存（記録画面の表示も更新する）
 function updatePlayerName(index, newName) {
     state.players[index].name = newName;
+    renderPlayers();
     saveState();
 }
 
@@ -198,22 +232,6 @@ function updatePlayerNumber(index, newNumber) {
 function updateMatchInfo(field, value) {
     state.matchInfo[field] = value;
     saveState();
-}
-
-// 設定画面（選手名・背番号・チーム名・日時・会場）を開く
-function openSettings() {
-    document.getElementById("input-date").value = state.matchInfo.date;
-    document.getElementById("input-venue").value = state.matchInfo.venue;
-    document.getElementById("input-team").value = state.matchInfo.teamName;
-    document.getElementById("input-opponent").value = state.matchInfo.opponent;
-    renderRoster();
-    document.getElementById("settings-screen").classList.add("open");
-}
-
-// 設定画面を閉じてメイン画面に戻る（選手名の変更を反映）
-function closeSettings() {
-    document.getElementById("settings-screen").classList.remove("open");
-    renderPlayers();
 }
 
 // 選手登録リスト（背番号・選手名）の描画
@@ -395,22 +413,22 @@ function csvField(value) {
     return str;
 }
 
-// CSVエクスポート
-function exportCSV() {
+// CSV本文の生成（試合情報 + 選手スタッツ）
+function buildCSVContent(matchInfo, players) {
     let csvContent = "data:text/csv;charset=utf-8,";
 
     // 試合情報
-    csvContent += `日時,${csvField(state.matchInfo.date)}\n`;
-    csvContent += `会場,${csvField(state.matchInfo.venue)}\n`;
-    csvContent += `自チーム名,${csvField(state.matchInfo.teamName)}\n`;
-    csvContent += `対戦相手,${csvField(state.matchInfo.opponent)}\n`;
+    csvContent += `日時,${csvField(matchInfo.date)}\n`;
+    csvContent += `会場,${csvField(matchInfo.venue)}\n`;
+    csvContent += `自チーム名,${csvField(matchInfo.teamName)}\n`;
+    csvContent += `対戦相手,${csvField(matchInfo.opponent)}\n`;
     csvContent += "\n";
 
     // ヘッダー行
     csvContent += "背番号,選手名,サーブエース(P),サーブ失点(M),サーブ成功(A),スパイク得点(P),スパイク失点(M),スパイク決定率(%),レシーブ優(A),レシーブ良(B),レシーブ可(C),レシーブ不可(D),ブロック得点(P),ブロック失点(M),その他得点(P),その他ミス(M)\n";
 
     // 選手データ
-    state.players.forEach(player => {
+    players.forEach(player => {
         const totalAttack = player.attack.P + player.attack.M;
         const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
 
@@ -428,15 +446,160 @@ function exportCSV() {
         csvContent += row + "\n";
     });
 
-    // ダウンロード処理
+    return csvContent;
+}
+
+// CSVのダウンロード処理
+function downloadCSV(csvContent, filename) {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "9stats_player_stats.csv");
+    link.setAttribute("download", filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
 
+// CSVエクスポート（現在記録中の試合）
+function exportCSV() {
+    const csvContent = buildCSVContent(state.matchInfo, state.players);
+    downloadCSV(csvContent, "9stats_player_stats.csv");
+}
+
+// --- 実績（試合履歴）---
+
+// 履歴一覧の読み込み
+function loadHistory() {
+    const saved = localStorage.getItem(HISTORY_KEY);
+    if (!saved) return [];
+    try {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+// 履歴一覧の保存
+function saveHistory(history) {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+// 現在記録中の試合を履歴に保存
+function saveCurrentMatchToHistory() {
+    const history = loadHistory();
+    history.unshift({
+        id: Date.now(),
+        savedAt: new Date().toISOString(),
+        matchInfo: JSON.parse(JSON.stringify(state.matchInfo)),
+        scores: JSON.parse(JSON.stringify(state.scores)),
+        players: JSON.parse(JSON.stringify(state.players))
+    });
+    saveHistory(history);
+    showHistoryList();
+}
+
+// 履歴の削除
+function deleteHistoryMatch(id) {
+    if (!confirm("この試合の記録を削除しますか？")) return;
+    const history = loadHistory().filter(m => m.id !== id);
+    saveHistory(history);
+    showHistoryList();
+}
+
+// 履歴一覧画面の表示
+function showHistoryList() {
+    document.getElementById("history-detail-view").style.display = "none";
+    document.getElementById("history-list-view").style.display = "block";
+    renderHistoryList();
+}
+
+// 履歴一覧の描画
+function renderHistoryList() {
+    const history = loadHistory();
+    const listEl = document.getElementById("history-list");
+
+    if (history.length === 0) {
+        listEl.innerHTML = `<div class="history-empty-msg">保存された試合記録はまだありません。</div>`;
+        return;
+    }
+
+    listEl.innerHTML = "";
+    history.forEach(match => {
+        const info = match.matchInfo || {};
+        const opponentLabel = info.opponent ? `対 ${escapeHtml(info.opponent)}` : "対戦相手未設定";
+        const teamLabel = info.teamName ? escapeHtml(info.teamName) : "自チーム";
+
+        const item = document.createElement("div");
+        item.className = "history-item";
+        item.innerHTML = `
+            <div class="history-item-info" onclick="showHistoryDetail(${match.id})">
+                <div class="history-item-title">${escapeHtml(info.date || "")} ${teamLabel} ${opponentLabel}</div>
+                <div>セット ${match.scores.setsHome}-${match.scores.setsAway}（最終 ${match.scores.home}-${match.scores.away}）${info.venue ? " / " + escapeHtml(info.venue) : ""}</div>
+            </div>
+            <button class="history-item-delete" onclick="deleteHistoryMatch(${match.id})">削除</button>
+        `;
+        listEl.appendChild(item);
+    });
+}
+
+// 履歴詳細画面の表示
+function showHistoryDetail(id) {
+    const match = loadHistory().find(m => m.id === id);
+    if (!match) return;
+
+    document.getElementById("history-list-view").style.display = "none";
+    document.getElementById("history-detail-view").style.display = "block";
+
+    const info = match.matchInfo || {};
+    document.getElementById("history-detail-summary").innerHTML = `
+        <div>日時: ${escapeHtml(info.date || "-")}　会場: ${escapeHtml(info.venue || "-")}</div>
+        <div>${escapeHtml(info.teamName || "自チーム")} vs ${escapeHtml(info.opponent || "対戦相手未設定")}</div>
+        <div>セット ${match.scores.setsHome}-${match.scores.setsAway}（最終スコア ${match.scores.home}-${match.scores.away}）</div>
+    `;
+
+    const rows = match.players.map(player => {
+        const totalAttack = player.attack.P + player.attack.M;
+        const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
+        return `
+            <tr>
+                <td>${escapeHtml(player.number)}</td>
+                <td>${escapeHtml(player.name)}</td>
+                <td>${player.serve.P}</td><td>${player.serve.M}</td><td>${player.serve.A}</td>
+                <td>${player.attack.P}</td><td>${player.attack.M}</td><td>${attackRate}%</td>
+                <td>${player.receive.A}</td><td>${player.receive.B}</td><td>${player.receive.C}</td><td>${player.receive.D}</td>
+                <td>${player.block.P}</td><td>${player.block.M}</td>
+                <td>${player.other.P}</td><td>${player.other.M}</td>
+            </tr>
+        `;
+    }).join("");
+
+    document.getElementById("history-detail-table").innerHTML = `
+        <div class="history-detail-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>番</th><th>名</th>
+                        <th>サP</th><th>サM</th><th>サA</th>
+                        <th>アP</th><th>アM</th><th>率</th>
+                        <th>レA</th><th>レB</th><th>レC</th><th>レD</th>
+                        <th>ブP</th><th>ブM</th>
+                        <th>他P</th><th>他M</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+
+    document.getElementById("history-detail-csv-btn").onclick = () => {
+        const csvContent = buildCSVContent(info, match.players);
+        downloadCSV(csvContent, `9stats_${info.date || "match"}.csv`);
+    };
+}
+
 // 初期化実行
-window.onload = startMatch;
+window.onload = function () {
+    startMatch();
+    goHome();
+};
