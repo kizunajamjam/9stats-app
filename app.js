@@ -752,11 +752,19 @@ function saveMatchSnapshotToHistory() {
     const history = loadHistory();
     history.unshift({
         id: Date.now(),
+        updatedAt: new Date().toISOString(),
         matchInfo: JSON.parse(JSON.stringify(state.matchInfo)),
         scores: JSON.parse(JSON.stringify(state.scores)),
         roster: computeTotalsForRoster(state.roster, state.sets)
     });
     saveHistory(history);
+}
+
+// 保存日時の表示用フォーマット（未保存・不正な値は"-"を返す）
+function formatDateTime(isoStr) {
+    const d = new Date(isoStr);
+    if (!isoStr || isNaN(d.getTime())) return "-";
+    return d.toLocaleString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 // 実績画面の「現在の試合を保存」ボタン用
@@ -802,6 +810,7 @@ function renderHistoryList() {
             <div class="history-item-info" onclick="showHistoryDetail(${match.id})">
                 <div class="history-item-title">${escapeHtml(info.date || "")} ${teamLabel} ${opponentLabel}</div>
                 <div>セット ${match.scores.setsHome}-${match.scores.setsAway}（最終 ${match.scores.home}-${match.scores.away}）${info.venue ? " / " + escapeHtml(info.venue) : ""}</div>
+                <div class="history-item-updated">最終更新: ${formatDateTime(match.updatedAt)}</div>
             </div>
             <button class="history-item-delete" onclick="deleteHistoryMatch(${match.id})">削除</button>
         `;
@@ -822,6 +831,7 @@ function showHistoryDetail(id) {
         <div>日時: ${escapeHtml(info.date || "-")}　会場: ${escapeHtml(info.venue || "-")}</div>
         <div>${escapeHtml(info.teamName || "自チーム")} vs ${escapeHtml(info.opponent || "対戦相手未設定")}</div>
         <div>セット ${match.scores.setsHome}-${match.scores.setsAway}（最終スコア ${match.scores.home}-${match.scores.away}）</div>
+        <div class="history-item-updated">最終更新: ${formatDateTime(match.updatedAt)}</div>
     `;
 
     const roster = match.roster || [];

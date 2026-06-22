@@ -585,6 +585,11 @@ body {
     color: var(--text-primary);
 }
 
+.history-item-updated {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+}
+
 .history-item-delete {
     font-size: 0.65rem;
     padding: 4px 8px;
