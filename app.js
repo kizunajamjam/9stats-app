@@ -9,11 +9,16 @@ const state = {
         setsAway: 0
     },
     isSecondServe: false, // サーブ試行回数フラグ (9人制ルール)
-    players: [], // 9名の選手データ
+    roster: [],   // 登録選手（最大20名）: {id, number, name, serve, attack, receive, block, other}
+    lineup: [],   // 出場中9スロット分のroster idを格納する配列
+    nextId: 0,    // 選手登録用の連番ID
     matchInfo: { date: "", venue: "", teamName: "", opponent: "" } // 試合情報（日時・会場・チーム名）
 };
 
-// 初期データ設定 (9名)
+const MAX_ROSTER_SIZE = 20;
+const LINEUP_SIZE = 9;
+
+// 初期データ設定
 const defaultPlayerNames = [
     "選手 1", "選手 2", "選手 3", "選手 4", "選手 5",
     "選手 6", "選手 7", "選手 8", "選手 9"
@@ -68,12 +73,18 @@ function loadState() {
 
     try {
         const parsed = JSON.parse(saved);
-        if (!Array.isArray(parsed.players) || parsed.players.length !== 9) return false;
-        if (!parsed.players.every(p => p.other && p.receive.D !== undefined && p.number !== undefined)) return false;
+        if (!Array.isArray(parsed.roster) || parsed.roster.length < 1 || parsed.roster.length > MAX_ROSTER_SIZE) return false;
+        if (!Array.isArray(parsed.lineup) || parsed.lineup.length !== LINEUP_SIZE) return false;
+        if (!parsed.roster.every(p => p.id !== undefined && p.number !== undefined && p.other && p.receive && p.receive.D !== undefined)) return false;
         if (!parsed.matchInfo) return false;
+
         state.scores = parsed.scores;
         state.isSecondServe = parsed.isSecondServe;
-        state.players = parsed.players;
+        state.roster = parsed.roster;
+        state.lineup = parsed.lineup;
+        state.nextId = typeof parsed.nextId === "number"
+            ? parsed.nextId
+            : (parsed.roster.reduce((max, p) => Math.max(max, p.id), -1) + 1);
         state.matchInfo = parsed.matchInfo;
         return true;
     } catch (e) {
@@ -81,10 +92,34 @@ function loadState() {
     }
 }
 
+// スタッツの初期値オブジェクトを生成
+function createEmptyStats() {
+    return {
+        serve: { P: 0, M: 0, A: 0 },          // エース / 失点 / 成功
+        attack: { P: 0, M: 0 },               // スパイクポイント / スパイク失点
+        receive: { A: 0, B: 0, C: 0, D: 0 },  // 優 / 良 / 可 / 不可(失点)
+        block: { P: 0, M: 0 },                // ブロックポイント / ブロック失点
+        other: { P: 0, M: 0 }                 // その他得点 / その他ミス
+    };
+}
+
+// 選手登録メンバーを1人生成
+function createRosterMember(name, number) {
+    const member = {
+        id: state.nextId++,
+        number: number || "",
+        name: name
+    };
+    Object.assign(member, createEmptyStats());
+    return member;
+}
+
 function initMatch() {
     state.scores = { home: 0, away: 0, setsHome: 0, setsAway: 0 };
     state.isSecondServe = false;
-    state.players = [];
+    state.roster = [];
+    state.lineup = [];
+    state.nextId = 0;
     state.matchInfo = {
         date: new Date().toISOString().slice(0, 10),
         venue: "",
@@ -92,17 +127,10 @@ function initMatch() {
         opponent: ""
     };
 
-    for (let i = 0; i < 9; i++) {
-        state.players.push({
-            id: i,
-            name: defaultPlayerNames[i],
-            number: "", // 背番号
-            serve: { P: 0, M: 0, A: 0 },   // エース / 失点 / 成功 (A: 成功してラリー継続)
-            attack: { P: 0, M: 0 },        // スパイクポイント / スパイク失点
-            receive: { A: 0, B: 0, C: 0, D: 0 }, // 優(セッター不動) / 良(セッター動) / 可(アンダー・二段) / 不可(失点)
-            block: { P: 0, M: 0 },         // ブロックポイント / ブロック失点（アウト・吸い込み）
-            other: { P: 0, M: 0 }          // その他得点（セッターツーアタック等） / その他ミス（ダブルコンタクト・キャッチ・タッチネット等）
-        });
+    for (let i = 0; i < LINEUP_SIZE; i++) {
+        const member = createRosterMember(defaultPlayerNames[i], "");
+        state.roster.push(member);
+        state.lineup.push(member.id);
     }
 
     saveState();
@@ -132,44 +160,71 @@ function escapeHtml(str) {
         .replace(/'/g, "&#39;");
 }
 
-// 選手リストの描画
+// roster idから選手データを取得
+function getRosterMember(id) {
+    return state.roster.find(p => p.id === id);
+}
+
+// 出場スロットの選手データを取得
+function getSlotPlayer(slotIndex) {
+    return getRosterMember(state.lineup[slotIndex]);
+}
+
+// 選手リストの描画（出場中の9スロット分）
 function renderPlayers() {
     const listContainer = document.getElementById("players-list");
     listContainer.innerHTML = "";
 
-    state.players.forEach((player, idx) => {
+    state.lineup.forEach((rosterId, idx) => {
+        const player = getRosterMember(rosterId);
         const row = document.createElement("div");
         row.className = "player-row";
-        
+
+        if (!player) {
+            // 交代で選手が外れたままの空きスロット
+            row.innerHTML = `
+                <button class="player-no-btn" onclick="openSubPicker(${idx})">-</button>
+                <div class="player-name-container"><span class="player-empty-label">未設定</span></div>
+                <div class="btn-group btn-group-serve"></div>
+                <div class="btn-group btn-group-attack"></div>
+                <div class="attack-rate-display">-</div>
+                <div class="btn-group btn-group-receive"></div>
+                <div class="btn-group btn-group-block"></div>
+                <div class="btn-group btn-group-other"></div>
+            `;
+            listContainer.appendChild(row);
+            return;
+        }
+
         // アタック決定率の計算
         const totalAttack = player.attack.P + player.attack.M;
         const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
 
         row.innerHTML = `
-            <div class="player-no">${player.number ? escapeHtml(player.number) : idx + 1}</div>
+            <button class="player-no-btn" onclick="openSubPicker(${idx})">${player.number ? escapeHtml(player.number) : idx + 1}</button>
             <div class="player-name-container">
-                <input type="text" class="player-name-input" value="${escapeHtml(player.name)}" onchange="updatePlayerName(${idx}, this.value)">
+                <input type="text" class="player-name-input" value="${escapeHtml(player.name)}" onchange="updateRosterName(${player.id}, this.value)">
             </div>
 
             <!-- サーブ -->
             <div class="btn-group btn-group-serve">
-                <button class="stat-btn point" onclick="recordServe(${idx}, 'P')">
+                <button class="stat-btn point" onclick="recordServe(${player.id}, 'P')">
                     <span class="count">${player.serve.P}</span>
                 </button>
-                <button class="stat-btn miss" onclick="recordServe(${idx}, 'M')">
+                <button class="stat-btn miss" onclick="recordServe(${player.id}, 'M')">
                     <span class="count">${player.serve.M}</span>
                 </button>
-                <button class="stat-btn" onclick="recordServe(${idx}, 'A')">
+                <button class="stat-btn" onclick="recordServe(${player.id}, 'A')">
                     <span class="count">${player.serve.A}</span>
                 </button>
             </div>
 
             <!-- アタック -->
             <div class="btn-group btn-group-attack">
-                <button class="stat-btn point" onclick="recordAttack(${idx}, 'P')">
+                <button class="stat-btn point" onclick="recordAttack(${player.id}, 'P')">
                     <span class="count">${player.attack.P}</span>
                 </button>
-                <button class="stat-btn miss" onclick="recordAttack(${idx}, 'M')">
+                <button class="stat-btn miss" onclick="recordAttack(${player.id}, 'M')">
                     <span class="count">${player.attack.M}</span>
                 </button>
             </div>
@@ -179,36 +234,36 @@ function renderPlayers() {
 
             <!-- レシーブ -->
             <div class="btn-group btn-group-receive">
-                <button class="stat-btn a" onclick="recordReceive(${idx}, 'A')">
+                <button class="stat-btn a" onclick="recordReceive(${player.id}, 'A')">
                     <span class="count">${player.receive.A}</span>
                 </button>
-                <button class="stat-btn b" onclick="recordReceive(${idx}, 'B')">
+                <button class="stat-btn b" onclick="recordReceive(${player.id}, 'B')">
                     <span class="count">${player.receive.B}</span>
                 </button>
-                <button class="stat-btn c" onclick="recordReceive(${idx}, 'C')">
+                <button class="stat-btn c" onclick="recordReceive(${player.id}, 'C')">
                     <span class="count">${player.receive.C}</span>
                 </button>
-                <button class="stat-btn miss" onclick="recordReceive(${idx}, 'D')">
+                <button class="stat-btn miss" onclick="recordReceive(${player.id}, 'D')">
                     <span class="count">${player.receive.D}</span>
                 </button>
             </div>
 
             <!-- ブロック -->
             <div class="btn-group btn-group-block">
-                <button class="stat-btn point" onclick="recordBlock(${idx}, 'P')">
+                <button class="stat-btn point" onclick="recordBlock(${player.id}, 'P')">
                     <span class="count">${player.block.P}</span>
                 </button>
-                <button class="stat-btn miss" onclick="recordBlock(${idx}, 'M')">
+                <button class="stat-btn miss" onclick="recordBlock(${player.id}, 'M')">
                     <span class="count">${player.block.M}</span>
                 </button>
             </div>
 
             <!-- その他 -->
             <div class="btn-group btn-group-other">
-                <button class="stat-btn point" onclick="recordOther(${idx}, 'P')">
+                <button class="stat-btn point" onclick="recordOther(${player.id}, 'P')">
                     <span class="count">${player.other.P}</span>
                 </button>
-                <button class="stat-btn miss" onclick="recordOther(${idx}, 'M')">
+                <button class="stat-btn miss" onclick="recordOther(${player.id}, 'M')">
                     <span class="count">${player.other.M}</span>
                 </button>
             </div>
@@ -218,15 +273,18 @@ function renderPlayers() {
 }
 
 // 選手名の変更保存（記録画面の表示も更新する）
-function updatePlayerName(index, newName) {
-    state.players[index].name = newName;
+function updateRosterName(rosterId, newName) {
+    const player = getRosterMember(rosterId);
+    if (player) player.name = newName;
     renderPlayers();
     saveState();
 }
 
 // 背番号の変更保存
-function updatePlayerNumber(index, newNumber) {
-    state.players[index].number = newNumber;
+function updateRosterNumber(rosterId, newNumber) {
+    const player = getRosterMember(rosterId);
+    if (player) player.number = newNumber;
+    renderPlayers();
     saveState();
 }
 
@@ -236,21 +294,75 @@ function updateMatchInfo(field, value) {
     saveState();
 }
 
-// 選手登録リスト（背番号・選手名）の描画
+// 選手登録リスト（最大20名・背番号・選手名）の描画
 function renderRoster() {
+    document.getElementById("roster-count").textContent = `(${state.roster.length}/${MAX_ROSTER_SIZE})`;
+    document.getElementById("roster-add-btn").disabled = state.roster.length >= MAX_ROSTER_SIZE;
+
     const rosterList = document.getElementById("roster-list");
     rosterList.innerHTML = "";
 
-    state.players.forEach((player, idx) => {
+    state.roster.forEach((player) => {
+        const inLineup = state.lineup.includes(player.id);
         const row = document.createElement("div");
         row.className = "roster-row";
         row.innerHTML = `
-            <span class="player-no">${idx + 1}</span>
-            <input type="text" class="roster-number-input" value="${escapeHtml(player.number)}" placeholder="番号" onchange="updatePlayerNumber(${idx}, this.value)">
-            <input type="text" class="roster-name-input" value="${escapeHtml(player.name)}" placeholder="選手名" onchange="updatePlayerName(${idx}, this.value)">
+            <span class="roster-status${inLineup ? " active" : ""}">${inLineup ? "出場" : "ベンチ"}</span>
+            <input type="text" class="roster-number-input" value="${escapeHtml(player.number)}" placeholder="番号" onchange="updateRosterNumber(${player.id}, this.value)">
+            <input type="text" class="roster-name-input" value="${escapeHtml(player.name)}" placeholder="選手名" onchange="updateRosterName(${player.id}, this.value)">
+            <button class="roster-delete-btn" onclick="removeRosterPlayer(${player.id})">×</button>
         `;
         rosterList.appendChild(row);
     });
+}
+
+// 選手登録の追加（最大20名まで）
+function addRosterPlayer() {
+    if (state.roster.length >= MAX_ROSTER_SIZE) return;
+    const member = createRosterMember(`選手 ${state.roster.length + 1}`, "");
+    state.roster.push(member);
+    saveState();
+    renderRoster();
+}
+
+// 選手登録の削除（出場中の場合はそのスロットを空ける）
+function removeRosterPlayer(rosterId) {
+    if (!confirm("この選手を登録から削除しますか？（記録済みのスタッツも削除されます）")) return;
+    state.roster = state.roster.filter(p => p.id !== rosterId);
+    state.lineup = state.lineup.map(id => (id === rosterId ? null : id));
+    saveState();
+    renderRoster();
+    renderPlayers();
+}
+
+// --- 選手交代（出場スロットの入れ替え） ---
+
+// 交代候補（ベンチ）選手を選ぶ画面を開く
+function openSubPicker(slotIndex) {
+    const benchPlayers = state.roster.filter(p => !state.lineup.includes(p.id));
+    const listEl = document.getElementById("sub-modal-list");
+
+    if (benchPlayers.length === 0) {
+        listEl.innerHTML = `<div class="history-empty-msg">交代可能な選手がいません。設定画面で選手を追加してください。</div>`;
+    } else {
+        listEl.innerHTML = benchPlayers.map(p => `
+            <button class="sub-modal-item" onclick="substitutePlayer(${slotIndex}, ${p.id})">${p.number ? escapeHtml(p.number) + " " : ""}${escapeHtml(p.name)}</button>
+        `).join("");
+    }
+
+    document.getElementById("sub-modal-overlay").style.display = "flex";
+}
+
+function closeSubPicker() {
+    document.getElementById("sub-modal-overlay").style.display = "none";
+}
+
+// 出場スロットの選手を入れ替える
+function substitutePlayer(slotIndex, rosterId) {
+    state.lineup[slotIndex] = rosterId;
+    saveState();
+    renderPlayers();
+    closeSubPicker();
 }
 
 // スコアUIの更新
@@ -303,12 +415,13 @@ function resetServeState() {
     updateServeIndicator();
 }
 
-// --- スタッツ記録ロジック ---
+// --- スタッツ記録ロジック（roster idを直接指定する） ---
 
 // サーブ記録（9人制専用サーブ2本制ルール）
-function recordServe(playerIdx, type) {
-    const player = state.players[playerIdx];
-    
+function recordServe(rosterId, type) {
+    const player = getRosterMember(rosterId);
+    if (!player) return;
+
     if (type === 'P') {
         // サーブ得点：得点加算、自チームに+1点、サーブ状態リセット
         player.serve.P += 1;
@@ -337,8 +450,9 @@ function recordServe(playerIdx, type) {
 }
 
 // アタック記録（スパイクポイント / スパイク失点）
-function recordAttack(playerIdx, type) {
-    const player = state.players[playerIdx];
+function recordAttack(rosterId, type) {
+    const player = getRosterMember(rosterId);
+    if (!player) return;
     player.attack[type] += 1;
 
     if (type === 'P') {
@@ -353,8 +467,9 @@ function recordAttack(playerIdx, type) {
 }
 
 // レシーブ記録（A:優 / B:良 / C:可 / D:不可=失点）
-function recordReceive(playerIdx, type) {
-    const player = state.players[playerIdx];
+function recordReceive(rosterId, type) {
+    const player = getRosterMember(rosterId);
+    if (!player) return;
     player.receive[type] += 1;
 
     // レシーブ不可（D）は相手得点
@@ -368,8 +483,9 @@ function recordReceive(playerIdx, type) {
 }
 
 // ブロック記録（ブロックポイント / ブロック失点）
-function recordBlock(playerIdx, type) {
-    const player = state.players[playerIdx];
+function recordBlock(rosterId, type) {
+    const player = getRosterMember(rosterId);
+    if (!player) return;
     player.block[type] += 1;
 
     if (type === 'P') {
@@ -384,8 +500,9 @@ function recordBlock(playerIdx, type) {
 }
 
 // その他記録（セッターツーアタック等の得点 / ダブルコンタクト・キャッチ・タッチネット等のミス）
-function recordOther(playerIdx, type) {
-    const player = state.players[playerIdx];
+function recordOther(rosterId, type) {
+    const player = getRosterMember(rosterId);
+    if (!player) return;
     player.other[type] += 1;
 
     if (type === 'P') {
@@ -399,17 +516,13 @@ function recordOther(playerIdx, type) {
     saveState();
 }
 
-// マッチリセット（選手名・背番号・試合情報は保持し、スコアとスタッツのみ初期化）
+// マッチリセット（選手登録・背番号・試合情報は保持し、スコアとスタッツのみ初期化）
 function resetMatch() {
-    if (confirm("スコアとスタッツをリセットしますか？（選手名・背番号・試合情報は保持されます）")) {
+    if (confirm("スコアとスタッツをリセットしますか？（選手登録・背番号・試合情報は保持されます）")) {
         state.scores = { home: 0, away: 0, setsHome: 0, setsAway: 0 };
         state.isSecondServe = false;
-        state.players.forEach(player => {
-            player.serve = { P: 0, M: 0, A: 0 };
-            player.attack = { P: 0, M: 0 };
-            player.receive = { A: 0, B: 0, C: 0, D: 0 };
-            player.block = { P: 0, M: 0 };
-            player.other = { P: 0, M: 0 };
+        state.roster.forEach(player => {
+            Object.assign(player, createEmptyStats());
         });
 
         saveState();
@@ -428,7 +541,7 @@ function csvField(value) {
     return str;
 }
 
-// CSV本文の生成（試合情報 + 選手スタッツ）
+// CSV本文の生成（試合情報 + 登録選手スタッツ）
 function buildCSVContent(matchInfo, players) {
     let csvContent = "data:text/csv;charset=utf-8,";
 
@@ -475,9 +588,9 @@ function downloadCSV(csvContent, filename) {
     document.body.removeChild(link);
 }
 
-// CSVエクスポート（現在記録中の試合）
+// CSVエクスポート（現在記録中の試合・登録選手全員分）
 function exportCSV() {
-    const csvContent = buildCSVContent(state.matchInfo, state.players);
+    const csvContent = buildCSVContent(state.matchInfo, state.roster);
     downloadCSV(csvContent, "9stats_player_stats.csv");
 }
 
@@ -508,7 +621,8 @@ function saveCurrentMatchToHistory() {
         savedAt: new Date().toISOString(),
         matchInfo: JSON.parse(JSON.stringify(state.matchInfo)),
         scores: JSON.parse(JSON.stringify(state.scores)),
-        players: JSON.parse(JSON.stringify(state.players))
+        roster: JSON.parse(JSON.stringify(state.roster)),
+        lineup: JSON.parse(JSON.stringify(state.lineup))
     });
     saveHistory(history);
     showHistoryList();
@@ -573,7 +687,8 @@ function showHistoryDetail(id) {
         <div>セット ${match.scores.setsHome}-${match.scores.setsAway}（最終スコア ${match.scores.home}-${match.scores.away}）</div>
     `;
 
-    const rows = match.players.map(player => {
+    const roster = match.roster || [];
+    const rows = roster.map(player => {
         const totalAttack = player.attack.P + player.attack.M;
         const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
         return `
@@ -608,7 +723,7 @@ function showHistoryDetail(id) {
     `;
 
     document.getElementById("history-detail-csv-btn").onclick = () => {
-        const csvContent = buildCSVContent(info, match.players);
+        const csvContent = buildCSVContent(info, roster);
         downloadCSV(csvContent, `9stats_${info.date || "match"}.csv`);
     };
 }

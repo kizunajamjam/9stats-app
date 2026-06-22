@@ -116,11 +116,15 @@
             </div>
 
             <div class="roster-section">
-                <div class="roster-title">選手登録</div>
+                <div class="roster-title-row">
+                    <div class="roster-title">選手登録 <span id="roster-count"></span></div>
+                    <button class="action-btn-mini primary" id="roster-add-btn" onclick="addRosterPlayer()">+ 追加</button>
+                </div>
                 <div class="roster-header-row">
-                    <span class="roster-col-no">#</span>
-                    <span class="roster-col-number">番</span>
-                    <span class="roster-col-name">名前</span>
+                    <span>状態</span>
+                    <span>番</span>
+                    <span>名前</span>
+                    <span></span>
                 </div>
                 <div id="roster-list"></div>
             </div>
@@ -146,6 +150,15 @@
                 <div id="history-detail-table"></div>
                 <button class="action-btn-mini primary" id="history-detail-csv-btn">CSV</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 選手交代モーダル -->
+    <div class="sub-modal-overlay" id="sub-modal-overlay" style="display: none;">
+        <div class="sub-modal">
+            <div class="sub-modal-title">交代する選手を選択</div>
+            <div id="sub-modal-list"></div>
+            <button class="action-btn-mini" onclick="closeSubPicker()">キャンセル</button>
         </div>
     </div>
 
