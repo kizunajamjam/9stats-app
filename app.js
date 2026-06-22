@@ -9,7 +9,8 @@ const state = {
         setsAway: 0
     },
     isSecondServe: false, // サーブ試行回数フラグ (9人制ルール)
-    players: [] // 9名の選手データ
+    players: [], // 9名の選手データ
+    matchInfo: { date: "", venue: "", teamName: "", opponent: "" } // 試合情報（日時・会場・チーム名）
 };
 
 // 初期データ設定 (9名)
@@ -33,10 +34,12 @@ function loadState() {
     try {
         const parsed = JSON.parse(saved);
         if (!Array.isArray(parsed.players) || parsed.players.length !== 9) return false;
-        if (!parsed.players.every(p => p.other && p.receive.D !== undefined)) return false;
+        if (!parsed.players.every(p => p.other && p.receive.D !== undefined && p.number !== undefined)) return false;
+        if (!parsed.matchInfo) return false;
         state.scores = parsed.scores;
         state.isSecondServe = parsed.isSecondServe;
         state.players = parsed.players;
+        state.matchInfo = parsed.matchInfo;
         return true;
     } catch (e) {
         return false;
@@ -47,11 +50,18 @@ function initMatch() {
     state.scores = { home: 0, away: 0, setsHome: 0, setsAway: 0 };
     state.isSecondServe = false;
     state.players = [];
+    state.matchInfo = {
+        date: new Date().toISOString().slice(0, 10),
+        venue: "",
+        teamName: "",
+        opponent: ""
+    };
 
     for (let i = 0; i < 9; i++) {
         state.players.push({
             id: i,
             name: defaultPlayerNames[i],
+            number: "", // 背番号
             serve: { P: 0, M: 0, A: 0 },   // エース / 失点 / 成功 (A: 成功してラリー継続)
             attack: { P: 0, M: 0 },        // スパイクポイント / スパイク失点
             receive: { A: 0, B: 0, C: 0, D: 0 }, // 優(セッター不動) / 良(セッター動) / 可(アンダー・二段) / 不可(失点)
@@ -176,6 +186,51 @@ function renderPlayers() {
 function updatePlayerName(index, newName) {
     state.players[index].name = newName;
     saveState();
+}
+
+// 背番号の変更保存
+function updatePlayerNumber(index, newNumber) {
+    state.players[index].number = newNumber;
+    saveState();
+}
+
+// 試合情報（日時・会場・チーム名・対戦相手）の変更保存
+function updateMatchInfo(field, value) {
+    state.matchInfo[field] = value;
+    saveState();
+}
+
+// 設定画面（選手名・背番号・チーム名・日時・会場）を開く
+function openSettings() {
+    document.getElementById("input-date").value = state.matchInfo.date;
+    document.getElementById("input-venue").value = state.matchInfo.venue;
+    document.getElementById("input-team").value = state.matchInfo.teamName;
+    document.getElementById("input-opponent").value = state.matchInfo.opponent;
+    renderRoster();
+    document.getElementById("settings-screen").classList.add("open");
+}
+
+// 設定画面を閉じてメイン画面に戻る（選手名の変更を反映）
+function closeSettings() {
+    document.getElementById("settings-screen").classList.remove("open");
+    renderPlayers();
+}
+
+// 選手登録リスト（背番号・選手名）の描画
+function renderRoster() {
+    const rosterList = document.getElementById("roster-list");
+    rosterList.innerHTML = "";
+
+    state.players.forEach((player, idx) => {
+        const row = document.createElement("div");
+        row.className = "roster-row";
+        row.innerHTML = `
+            <span class="player-no">${idx + 1}</span>
+            <input type="text" class="roster-number-input" value="${escapeHtml(player.number)}" placeholder="番号" onchange="updatePlayerNumber(${idx}, this.value)">
+            <input type="text" class="roster-name-input" value="${escapeHtml(player.name)}" placeholder="選手名" onchange="updatePlayerName(${idx}, this.value)">
+        `;
+        rosterList.appendChild(row);
+    });
 }
 
 // スコアUIの更新
@@ -344,8 +399,15 @@ function csvField(value) {
 function exportCSV() {
     let csvContent = "data:text/csv;charset=utf-8,";
 
+    // 試合情報
+    csvContent += `日時,${csvField(state.matchInfo.date)}\n`;
+    csvContent += `会場,${csvField(state.matchInfo.venue)}\n`;
+    csvContent += `自チーム名,${csvField(state.matchInfo.teamName)}\n`;
+    csvContent += `対戦相手,${csvField(state.matchInfo.opponent)}\n`;
+    csvContent += "\n";
+
     // ヘッダー行
-    csvContent += "選手名,サーブエース(P),サーブ失点(M),サーブ成功(A),スパイク得点(P),スパイク失点(M),スパイク決定率(%),レシーブ優(A),レシーブ良(B),レシーブ可(C),レシーブ不可(D),ブロック得点(P),ブロック失点(M),その他得点(P),その他ミス(M)\n";
+    csvContent += "背番号,選手名,サーブエース(P),サーブ失点(M),サーブ成功(A),スパイク得点(P),スパイク失点(M),スパイク決定率(%),レシーブ優(A),レシーブ良(B),レシーブ可(C),レシーブ不可(D),ブロック得点(P),ブロック失点(M),その他得点(P),その他ミス(M)\n";
 
     // 選手データ
     state.players.forEach(player => {
@@ -353,6 +415,7 @@ function exportCSV() {
         const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
 
         const row = [
+            csvField(player.number),
             csvField(player.name),
             player.serve.P, player.serve.M, player.serve.A,
             player.attack.P, player.attack.M,
@@ -364,7 +427,7 @@ function exportCSV() {
 
         csvContent += row + "\n";
     });
-    
+
     // ダウンロード処理
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");

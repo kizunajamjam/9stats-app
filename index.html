@@ -41,6 +41,7 @@
                 </div>
                 
                 <div class="header-actions-mini">
+                    <button class="action-btn-mini" onclick="openSettings()">設定</button>
                     <button class="action-btn-mini" onclick="resetMatch()">R</button>
                     <button class="action-btn-mini primary" onclick="exportCSV()">CSV</button>
                 </div>
@@ -52,18 +53,69 @@
             <div class="stats-table-header">
                 <div class="col-no">#</div>
                 <div class="col-name">名</div>
-                <div class="col-serve">サ</div>
-                <div class="col-attack">ア</div>
+                <div class="col-serve btn-group">
+                    <span class="sub-label">P</span>
+                    <span class="sub-label">M</span>
+                    <span class="sub-label">A</span>
+                </div>
+                <div class="col-attack btn-group">
+                    <span class="sub-label">P</span>
+                    <span class="sub-label">M</span>
+                </div>
                 <div class="col-attack-rate">率</div>
-                <div class="col-receive">レ</div>
-                <div class="col-block">ブ</div>
-                <div class="col-other">他</div>
+                <div class="col-receive btn-group">
+                    <span class="sub-label">A</span>
+                    <span class="sub-label">B</span>
+                    <span class="sub-label">C</span>
+                    <span class="sub-label">D</span>
+                </div>
+                <div class="col-block btn-group">
+                    <span class="sub-label">P</span>
+                    <span class="sub-label">M</span>
+                </div>
+                <div class="col-other btn-group">
+                    <span class="sub-label">P</span>
+                    <span class="sub-label">M</span>
+                </div>
             </div>
-            
+
             <div class="players-list" id="players-list">
                 <!-- JavaScriptで9人分の行を動的に挿入します -->
             </div>
         </main>
+    </div>
+
+    <!-- 試合設定画面（選手名・背番号・チーム名・日時・会場） -->
+    <div class="settings-screen" id="settings-screen">
+        <div class="settings-header">
+            <button class="action-btn-mini" onclick="closeSettings()">戻る</button>
+            <span class="settings-title">試合設定</span>
+        </div>
+        <div class="settings-body">
+            <div class="settings-grid">
+                <label class="settings-label" for="input-date">日時</label>
+                <input class="settings-input" type="date" id="input-date" onchange="updateMatchInfo('date', this.value)">
+
+                <label class="settings-label" for="input-venue">会場</label>
+                <input class="settings-input" type="text" id="input-venue" placeholder="会場名" onchange="updateMatchInfo('venue', this.value)">
+
+                <label class="settings-label" for="input-team">自チーム名</label>
+                <input class="settings-input" type="text" id="input-team" placeholder="自チーム名" onchange="updateMatchInfo('teamName', this.value)">
+
+                <label class="settings-label" for="input-opponent">対戦相手</label>
+                <input class="settings-input" type="text" id="input-opponent" placeholder="対戦相手チーム名" onchange="updateMatchInfo('opponent', this.value)">
+            </div>
+
+            <div class="roster-section">
+                <div class="roster-title">選手登録</div>
+                <div class="roster-header-row">
+                    <span class="roster-col-no">#</span>
+                    <span class="roster-col-number">番</span>
+                    <span class="roster-col-name">名前</span>
+                </div>
+                <div id="roster-list"></div>
+            </div>
+        </div>
     </div>
 
     <script src="app.js"></script>
