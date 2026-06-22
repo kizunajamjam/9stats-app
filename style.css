@@ -174,11 +174,17 @@ body {
     border-radius: 8px;
 }
 
-.stats-table-header {
+/* 列構成（参考アプリと同じ16列）:
+   番,名 | サ,P,M | A,B,C,D | 率,ス,P,M | ブ,P,M | P,M */
+.stats-table-header,
+.player-row {
     display: grid;
-    grid-template-columns: 24px 50px 3fr 2fr 38px 4fr 2fr 2fr;
-    gap: 4px;
-    padding: 6px 6px;
+    grid-template-columns: 24px 50px 28px 1fr 1fr 1fr 1fr 1fr 1fr 34px 28px 1fr 1fr 28px 1fr 1fr 1fr 1fr;
+    gap: 3px;
+}
+
+.stats-table-header {
+    padding: 6px 4px;
     font-size: 0.65rem;
     color: var(--text-secondary);
     font-weight: 600;
@@ -190,16 +196,6 @@ body {
     z-index: 10;
 }
 
-/* ボタン列ごとの1文字ヘッダー（btn-groupと同じ比率で揃える） */
-.stats-table-header .btn-group {
-    height: auto;
-}
-
-.sub-label {
-    flex: 1;
-    text-align: center;
-}
-
 .players-list {
     display: flex;
     flex-direction: column;
@@ -207,13 +203,10 @@ body {
 
 /* 選手行 */
 .player-row {
-    display: grid;
-    grid-template-columns: 24px 50px 3fr 2fr 38px 4fr 2fr 2fr;
-    gap: 4px;
     align-items: center;
     background: var(--card-bg);
     border-bottom: 1px solid var(--card-border);
-    padding: 2px 6px;
+    padding: 2px 4px;
     height: calc((90 * var(--vh) - 35px) / 9); /* 記録エリアからヘッダー分を引いた高さを9等分 */
     min-height: 34px;
     box-sizing: border-box;
@@ -281,17 +274,9 @@ body {
     border-bottom-color: var(--accent-blue);
 }
 
-/* ボタンコントロール群 */
-.btn-group {
-    display: flex;
-    gap: 2px;
+/* スタッツ記録ボタン（各列1個ずつ、グリッドセルに直接配置） */
+.cell-btn {
     width: 100%;
-    height: 100%;
-    align-items: center;
-}
-
-.stat-btn {
-    flex: 1;
     height: 90%;
     min-height: 24px;
     border-radius: 4px;
@@ -300,52 +285,48 @@ body {
     color: var(--text-primary);
     cursor: pointer;
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     font-family: inherit;
 }
 
-.stat-btn .count {
+.cell-btn .count {
     font-size: 0.8rem;
     font-weight: 700;
 }
 
+/* 本数（サ/ス/ブ）の非インタラクティブな表示 */
+.cell-count {
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+/* スパイク決定率の表示 */
+.cell-rate {
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent-blue);
+}
+
 /* 各種アクション色分け */
-.btn-group-serve .stat-btn.point:active { background: var(--accent-green); color: #ffffff; }
-.btn-group-serve .stat-btn.miss:active { background: var(--accent-red); color: #ffffff; }
-
-.btn-group-attack .stat-btn.point:active { background: var(--accent-green); color: #ffffff; }
-.btn-group-attack .stat-btn.miss:active { background: var(--accent-red); color: #ffffff; }
-
-.btn-group-receive .stat-btn.a:active { background: var(--accent-green); color: #ffffff; }
-.btn-group-receive .stat-btn.b:active { background: var(--accent-orange); color: #ffffff; }
-.btn-group-receive .stat-btn.c:active { background: var(--accent-blue); color: #ffffff; }
-.btn-group-receive .stat-btn.miss:active { background: var(--accent-red); color: #ffffff; }
-
-.btn-group-block .stat-btn.point:active { background: var(--accent-green); color: #ffffff; }
-.btn-group-block .stat-btn.miss:active { background: var(--accent-red); color: #ffffff; }
-
-.btn-group-other .stat-btn.point:active { background: var(--accent-green); color: #ffffff; }
-.btn-group-other .stat-btn.miss:active { background: var(--accent-red); color: #ffffff; }
+.cell-btn.point:active { background: var(--accent-green); color: #ffffff; }
+.cell-btn.miss:active { background: var(--accent-red); color: #ffffff; }
+.cell-btn.g-receive.a:active { background: var(--accent-green); color: #ffffff; }
+.cell-btn.g-receive.b:active { background: var(--accent-orange); color: #ffffff; }
+.cell-btn.g-receive.c:active { background: var(--accent-blue); color: #ffffff; }
 
 /* ホバー視覚効果 */
-.stat-btn:hover {
+.cell-btn:hover {
     background: var(--card-hover-bg);
     border-color: var(--accent-blue-hover);
 }
 
-.stat-btn:active {
+.cell-btn:active {
     transform: scale(0.95);
-}
-
-/* アタック決定率表示 */
-.attack-rate-display {
-    text-align: center;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--accent-blue);
 }
 
 /* フッター */

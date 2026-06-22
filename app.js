@@ -135,9 +135,9 @@ function loadState() {
 // スタッツの初期値オブジェクトを生成
 function createEmptyStats() {
     return {
-        serve: { P: 0, M: 0, A: 0 },          // エース / 失点 / 成功
-        attack: { P: 0, M: 0 },               // スパイクポイント / スパイク失点
+        serve: { P: 0, M: 0 },                // エース / 失点
         receive: { A: 0, B: 0, C: 0, D: 0 },  // 優 / 良 / 可 / 不可(失点)
+        attack: { P: 0, M: 0 },               // スパイクポイント / スパイク失点
         block: { P: 0, M: 0 },                // ブロックポイント / ブロック失点
         other: { P: 0, M: 0 }                 // その他得点 / その他ミス
     };
@@ -220,20 +220,21 @@ function renderPlayers() {
             row.innerHTML = `
                 <button class="player-no-btn" onclick="openSubPicker(${idx})">-</button>
                 <div class="player-name-container"><span class="player-empty-label">未設定</span></div>
-                <div class="btn-group btn-group-serve"></div>
-                <div class="btn-group btn-group-attack"></div>
-                <div class="attack-rate-display">-</div>
-                <div class="btn-group btn-group-receive"></div>
-                <div class="btn-group btn-group-block"></div>
-                <div class="btn-group btn-group-other"></div>
+                <div class="cell-count">-</div><div></div><div></div>
+                <div></div><div></div><div></div><div></div>
+                <div class="cell-count">-</div><div class="cell-count">-</div><div></div><div></div>
+                <div class="cell-count">-</div><div></div><div></div>
+                <div></div><div></div>
             `;
             listContainer.appendChild(row);
             return;
         }
 
-        // アタック決定率の計算
-        const totalAttack = player.attack.P + player.attack.M;
-        const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
+        // 各カテゴリの本数・決定率の計算
+        const serveTotal = player.serve.P + player.serve.M;
+        const attackTotal = player.attack.P + player.attack.M;
+        const attackRate = attackTotal > 0 ? ((player.attack.P / attackTotal) * 100).toFixed(1) : "0.0";
+        const blockTotal = player.block.P + player.block.M;
 
         row.innerHTML = `
             <button class="player-no-btn" onclick="openSubPicker(${idx})">${player.number ? escapeHtml(player.number) : idx + 1}</button>
@@ -241,67 +242,31 @@ function renderPlayers() {
                 <input type="text" class="player-name-input" value="${escapeHtml(player.name)}" onchange="updateRosterName(${player.id}, this.value)">
             </div>
 
-            <!-- サーブ -->
-            <div class="btn-group btn-group-serve">
-                <button class="stat-btn point" onclick="recordServe(${player.id}, 'P')">
-                    <span class="count">${player.serve.P}</span>
-                </button>
-                <button class="stat-btn miss" onclick="recordServe(${player.id}, 'M')">
-                    <span class="count">${player.serve.M}</span>
-                </button>
-                <button class="stat-btn" onclick="recordServe(${player.id}, 'A')">
-                    <span class="count">${player.serve.A}</span>
-                </button>
-            </div>
+            <!-- サービス: 本数 / エース / 失点 -->
+            <div class="cell-count">${serveTotal}</div>
+            <button class="cell-btn g-serve point" onclick="recordServe(${player.id}, 'P')"><span class="count">${player.serve.P}</span></button>
+            <button class="cell-btn g-serve miss" onclick="recordServe(${player.id}, 'M')"><span class="count">${player.serve.M}</span></button>
 
-            <!-- アタック -->
-            <div class="btn-group btn-group-attack">
-                <button class="stat-btn point" onclick="recordAttack(${player.id}, 'P')">
-                    <span class="count">${player.attack.P}</span>
-                </button>
-                <button class="stat-btn miss" onclick="recordAttack(${player.id}, 'M')">
-                    <span class="count">${player.attack.M}</span>
-                </button>
-            </div>
+            <!-- レシーブ: 優 / 良 / 可 / 不可 -->
+            <button class="cell-btn g-receive a" onclick="recordReceive(${player.id}, 'A')"><span class="count">${player.receive.A}</span></button>
+            <button class="cell-btn g-receive b" onclick="recordReceive(${player.id}, 'B')"><span class="count">${player.receive.B}</span></button>
+            <button class="cell-btn g-receive c" onclick="recordReceive(${player.id}, 'C')"><span class="count">${player.receive.C}</span></button>
+            <button class="cell-btn g-receive miss" onclick="recordReceive(${player.id}, 'D')"><span class="count">${player.receive.D}</span></button>
 
-            <!-- 決定率 -->
-            <div class="attack-rate-display" id="rate-${idx}">${attackRate}%</div>
+            <!-- アタック: 決定率 / 本数 / 得点 / 失点 -->
+            <div class="cell-rate" id="rate-${idx}">${attackRate}%</div>
+            <div class="cell-count">${attackTotal}</div>
+            <button class="cell-btn g-attack point" onclick="recordAttack(${player.id}, 'P')"><span class="count">${player.attack.P}</span></button>
+            <button class="cell-btn g-attack miss" onclick="recordAttack(${player.id}, 'M')"><span class="count">${player.attack.M}</span></button>
 
-            <!-- レシーブ -->
-            <div class="btn-group btn-group-receive">
-                <button class="stat-btn a" onclick="recordReceive(${player.id}, 'A')">
-                    <span class="count">${player.receive.A}</span>
-                </button>
-                <button class="stat-btn b" onclick="recordReceive(${player.id}, 'B')">
-                    <span class="count">${player.receive.B}</span>
-                </button>
-                <button class="stat-btn c" onclick="recordReceive(${player.id}, 'C')">
-                    <span class="count">${player.receive.C}</span>
-                </button>
-                <button class="stat-btn miss" onclick="recordReceive(${player.id}, 'D')">
-                    <span class="count">${player.receive.D}</span>
-                </button>
-            </div>
+            <!-- ブロック: 本数 / 得点 / 失点 -->
+            <div class="cell-count">${blockTotal}</div>
+            <button class="cell-btn g-block point" onclick="recordBlock(${player.id}, 'P')"><span class="count">${player.block.P}</span></button>
+            <button class="cell-btn g-block miss" onclick="recordBlock(${player.id}, 'M')"><span class="count">${player.block.M}</span></button>
 
-            <!-- ブロック -->
-            <div class="btn-group btn-group-block">
-                <button class="stat-btn point" onclick="recordBlock(${player.id}, 'P')">
-                    <span class="count">${player.block.P}</span>
-                </button>
-                <button class="stat-btn miss" onclick="recordBlock(${player.id}, 'M')">
-                    <span class="count">${player.block.M}</span>
-                </button>
-            </div>
-
-            <!-- その他 -->
-            <div class="btn-group btn-group-other">
-                <button class="stat-btn point" onclick="recordOther(${player.id}, 'P')">
-                    <span class="count">${player.other.P}</span>
-                </button>
-                <button class="stat-btn miss" onclick="recordOther(${player.id}, 'M')">
-                    <span class="count">${player.other.M}</span>
-                </button>
-            </div>
+            <!-- その他: 得点 / ミス -->
+            <button class="cell-btn g-other point" onclick="recordOther(${player.id}, 'P')"><span class="count">${player.other.P}</span></button>
+            <button class="cell-btn g-other miss" onclick="recordOther(${player.id}, 'M')"><span class="count">${player.other.M}</span></button>
         `;
         listContainer.appendChild(row);
     });
@@ -486,10 +451,6 @@ function recordServe(rosterId, type) {
             adjustScore('away', 1);
             resetServeState();
         }
-    } else if (type === 'A') {
-        // サーブ成功（ラリー開始）
-        player.serve.A += 1;
-        resetServeState();
     }
 
     renderPlayers();
@@ -605,21 +566,22 @@ function buildCSVContent(matchInfo, players) {
     csvContent += "\n";
 
     // ヘッダー行
-    csvContent += "背番号,選手名,サーブエース(P),サーブ失点(M),サーブ成功(A),スパイク得点(P),スパイク失点(M),スパイク決定率(%),レシーブ優(A),レシーブ良(B),レシーブ可(C),レシーブ不可(D),ブロック得点(P),ブロック失点(M),その他得点(P),その他ミス(M)\n";
+    csvContent += "背番号,選手名,サーブ本数,サーブエース(P),サーブ失点(M),レシーブ優(A),レシーブ良(B),レシーブ可(C),レシーブ不可(D),スパイク決定率(%),スパイク本数,スパイク得点(P),スパイク失点(M),ブロック本数,ブロック得点(P),ブロック失点(M),その他得点(P),その他ミス(M)\n";
 
     // 選手データ
     players.forEach(player => {
+        const serveTotal = player.serve.P + player.serve.M;
         const totalAttack = player.attack.P + player.attack.M;
         const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
+        const blockTotal = player.block.P + player.block.M;
 
         const row = [
             csvField(player.number),
             csvField(player.name),
-            player.serve.P, player.serve.M, player.serve.A,
-            player.attack.P, player.attack.M,
-            attackRate,
+            serveTotal, player.serve.P, player.serve.M,
             player.receive.A, player.receive.B, player.receive.C, player.receive.D,
-            player.block.P, player.block.M,
+            attackRate, totalAttack, player.attack.P, player.attack.M,
+            blockTotal, player.block.P, player.block.M,
             player.other.P, player.other.M
         ].join(",");
 
@@ -741,16 +703,18 @@ function showHistoryDetail(id) {
 
     const roster = match.roster || [];
     const rows = roster.map(player => {
+        const serveTotal = player.serve.P + player.serve.M;
         const totalAttack = player.attack.P + player.attack.M;
         const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
+        const blockTotal = player.block.P + player.block.M;
         return `
             <tr>
                 <td>${escapeHtml(player.number)}</td>
                 <td>${escapeHtml(player.name)}</td>
-                <td>${player.serve.P}</td><td>${player.serve.M}</td><td>${player.serve.A}</td>
-                <td>${player.attack.P}</td><td>${player.attack.M}</td><td>${attackRate}%</td>
+                <td>${serveTotal}</td><td>${player.serve.P}</td><td>${player.serve.M}</td>
                 <td>${player.receive.A}</td><td>${player.receive.B}</td><td>${player.receive.C}</td><td>${player.receive.D}</td>
-                <td>${player.block.P}</td><td>${player.block.M}</td>
+                <td>${attackRate}%</td><td>${totalAttack}</td><td>${player.attack.P}</td><td>${player.attack.M}</td>
+                <td>${blockTotal}</td><td>${player.block.P}</td><td>${player.block.M}</td>
                 <td>${player.other.P}</td><td>${player.other.M}</td>
             </tr>
         `;
@@ -762,10 +726,10 @@ function showHistoryDetail(id) {
                 <thead>
                     <tr>
                         <th>番</th><th>名</th>
-                        <th>サP</th><th>サM</th><th>サA</th>
-                        <th>アP</th><th>アM</th><th>率</th>
+                        <th>サ</th><th>サP</th><th>サM</th>
                         <th>レA</th><th>レB</th><th>レC</th><th>レD</th>
-                        <th>ブP</th><th>ブM</th>
+                        <th>率</th><th>ス</th><th>アP</th><th>アM</th>
+                        <th>ブ</th><th>ブP</th><th>ブM</th>
                         <th>他P</th><th>他M</th>
                     </tr>
                 </thead>
