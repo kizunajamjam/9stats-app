@@ -611,12 +611,6 @@ function downloadCSV(csvContent, filename) {
     document.body.removeChild(link);
 }
 
-// CSVエクスポート（現在記録中の試合・登録選手全員分）
-function exportCSV() {
-    const csvContent = buildCSVContent(state.matchInfo, state.roster);
-    downloadCSV(csvContent, "9stats_player_stats.csv");
-}
-
 // --- 実績（試合履歴）---
 
 // 履歴一覧の読み込み
