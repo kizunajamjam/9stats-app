@@ -83,12 +83,6 @@ body {
     width: 100%;
 }
 
-.app-title-mini {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
 .score-board-mini {
     display: flex;
     align-items: center;
@@ -220,13 +214,6 @@ body {
     background: var(--card-hover-bg);
 }
 
-.player-no {
-    font-size: 0.9rem;
-    font-weight: 700;
-    text-align: center;
-    color: var(--text-secondary);
-}
-
 /* 記録画面の背番号ボタン（タップで選手交代） */
 .player-no-btn {
     font-family: inherit;
@@ -313,26 +300,6 @@ body {
     transform: scale(0.95);
 }
 
-/* フッター */
-.app-footer {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    border-top: 1px solid var(--card-border);
-    padding-top: 4px;
-    height: calc(8 * var(--vh));
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-}
-
-.status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 600;
-}
-
 .status-dot {
     width: 6px;
     height: 6px;
@@ -342,10 +309,6 @@ body {
 
 .status-dot.second-serve {
     background-color: var(--accent-orange);
-}
-
-.help-hint {
-    display: none; /* スマホの縦幅を節約するため非表示に */
 }
 
 /* ホーム画面 */

@@ -635,11 +635,9 @@ function saveCurrentMatchToHistory() {
     const history = loadHistory();
     history.unshift({
         id: Date.now(),
-        savedAt: new Date().toISOString(),
         matchInfo: JSON.parse(JSON.stringify(state.matchInfo)),
         scores: JSON.parse(JSON.stringify(state.scores)),
-        roster: JSON.parse(JSON.stringify(state.roster)),
-        lineup: JSON.parse(JSON.stringify(state.lineup))
+        roster: JSON.parse(JSON.stringify(state.roster))
     });
     saveHistory(history);
     showHistoryList();
