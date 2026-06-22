@@ -169,6 +169,33 @@ body {
     border-radius: 8px;
 }
 
+/* セット切り替えタブ（S1, S2...）。現在記録中のセット以外は閲覧専用になる */
+.set-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px 4px 0;
+    overflow-x: auto;
+}
+
+.set-tab-btn {
+    font-family: inherit;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.set-tab-btn.active {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: #ffffff;
+}
+
 /* 列構成（記録ボタンのみ・計算で出せる本数/決定率セルは省いてボタンを大きくする）:
    番,名 | P,M(サーブ) | A,B,C,D(レシーブ) | P,M(アタック) | P,M(ブロック) | P,M(その他) */
 .stats-table-header,
@@ -202,7 +229,7 @@ body {
     background: var(--card-bg);
     border-bottom: 1px solid var(--card-border);
     padding: 2px 4px;
-    height: calc((90 * var(--vh) - 35px) / 9); /* 記録エリアからヘッダー分を引いた高さを9等分 */
+    height: calc((90 * var(--vh) - 60px) / 9); /* 記録エリアからタブ+ヘッダー分を引いた高さを9等分 */
     min-height: 34px;
     box-sizing: border-box;
 }
@@ -234,6 +261,14 @@ body {
 .player-no-btn:hover {
     background: var(--card-hover-bg);
     border-color: var(--accent-blue-hover);
+}
+
+.player-no-btn.readonly {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    background: var(--card-hover-bg);
 }
 
 .player-empty-label {
@@ -290,6 +325,17 @@ body {
 
 .cell-btn:active {
     transform: scale(0.95);
+}
+
+.cell-btn.readonly {
+    cursor: default;
+    background: var(--card-hover-bg);
+    color: var(--text-secondary);
+}
+
+.cell-btn.readonly:hover {
+    background: var(--card-hover-bg);
+    border-color: var(--btn-border);
 }
 
 .status-dot {

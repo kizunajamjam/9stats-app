@@ -9,11 +9,14 @@ const state = {
         setsAway: 0
     },
     isSecondServe: false, // サーブ試行回数フラグ (9人制ルール)
-    roster: [],   // 登録選手（最大20名）: {id, number, name, serve, attack, receive, block, other}
+    roster: [],   // 登録選手（最大20名）: {id, number, name}
     lineup: [],   // 出場中9スロット分のroster idを格納する配列
     nextId: 0,    // 選手登録用の連番ID
     matchInfo: { date: "", venue: "", teamName: "", opponent: "" }, // 試合情報（日時・会場・チーム名）
-    rules: { targetScore: 21, deuceMargin: 2 } // セットルール（点数・デュース差）
+    rules: { targetScore: 21, deuceMargin: 2 }, // セットルール（点数・デュース差）
+    sets: [],          // セットごとのスタッツ: [{ stats: { [rosterId]: statsObj }, lineup? }]
+    currentSetIndex: 0, // 現在記録中（ライブ）のセット
+    viewingSetIndex: 0  // 記録画面で表示中のセット（タブ切り替えで変わる）
 };
 
 const MAX_ROSTER_SIZE = 20;
@@ -38,7 +41,9 @@ function pushUndoSnapshot() {
     undoStack.push(JSON.stringify({
         scores: state.scores,
         isSecondServe: state.isSecondServe,
-        roster: state.roster,
+        sets: state.sets,
+        currentSetIndex: state.currentSetIndex,
+        viewingSetIndex: state.viewingSetIndex,
         lineup: state.lineup
     }));
     if (undoStack.length > UNDO_LIMIT) undoStack.shift();
@@ -52,7 +57,9 @@ function undoLastAction() {
     const snapshot = JSON.parse(snapshotJson);
     state.scores = snapshot.scores;
     state.isSecondServe = snapshot.isSecondServe;
-    state.roster = snapshot.roster;
+    state.sets = snapshot.sets;
+    state.currentSetIndex = snapshot.currentSetIndex;
+    state.viewingSetIndex = snapshot.viewingSetIndex;
     state.lineup = snapshot.lineup;
 
     saveState();
@@ -118,8 +125,11 @@ function loadState() {
         const parsed = JSON.parse(saved);
         if (!Array.isArray(parsed.roster) || parsed.roster.length < 1 || parsed.roster.length > MAX_ROSTER_SIZE) return false;
         if (!Array.isArray(parsed.lineup) || parsed.lineup.length !== LINEUP_SIZE) return false;
-        if (!parsed.roster.every(p => p.id !== undefined && p.number !== undefined && p.other && p.receive && p.receive.D !== undefined)) return false;
+        if (!parsed.roster.every(p => p.id !== undefined && p.number !== undefined && p.name !== undefined)) return false;
         if (!parsed.matchInfo) return false;
+        if (!Array.isArray(parsed.sets) || parsed.sets.length < 1) return false;
+        if (!parsed.sets.every(s => s && typeof s.stats === "object")) return false;
+        if (typeof parsed.currentSetIndex !== "number" || parsed.currentSetIndex < 0 || parsed.currentSetIndex >= parsed.sets.length) return false;
 
         state.scores = parsed.scores;
         state.isSecondServe = parsed.isSecondServe;
@@ -132,6 +142,11 @@ function loadState() {
         state.rules = (parsed.rules && typeof parsed.rules.targetScore === "number" && typeof parsed.rules.deuceMargin === "number")
             ? parsed.rules
             : { targetScore: 21, deuceMargin: 2 };
+        state.sets = parsed.sets;
+        state.currentSetIndex = parsed.currentSetIndex;
+        state.viewingSetIndex = (typeof parsed.viewingSetIndex === "number" && parsed.viewingSetIndex >= 0 && parsed.viewingSetIndex < parsed.sets.length)
+            ? parsed.viewingSetIndex
+            : parsed.currentSetIndex;
         return true;
     } catch (e) {
         return false;
@@ -149,15 +164,29 @@ function createEmptyStats() {
     };
 }
 
-// 選手登録メンバーを1人生成
+// 選手登録メンバーを1人生成（識別情報のみ。スタッツはセットごとに別管理する）
 function createRosterMember(name, number) {
-    const member = {
+    return {
         id: state.nextId++,
         number: number || "",
         name: name
     };
-    Object.assign(member, createEmptyStats());
-    return member;
+}
+
+// 指定セット・選手のスタッツを取得（無ければ作成して書き込む。記録系の更新でのみ使用）
+function getOrCreateSetStats(setIndex, rosterId) {
+    const set = state.sets[setIndex];
+    if (!set.stats[rosterId]) {
+        set.stats[rosterId] = createEmptyStats();
+    }
+    return set.stats[rosterId];
+}
+
+// 指定セット・選手のスタッツを参照のみ行う（表示用。未記録なら空の値を返す）
+function peekSetStats(setIndex, rosterId) {
+    const set = state.sets[setIndex];
+    if (set && set.stats[rosterId]) return set.stats[rosterId];
+    return createEmptyStats();
 }
 
 function initMatch() {
@@ -173,6 +202,9 @@ function initMatch() {
         opponent: ""
     };
     state.rules = { targetScore: 21, deuceMargin: 2 };
+    state.sets = [{ stats: {} }];
+    state.currentSetIndex = 0;
+    state.viewingSetIndex = 0;
 
     for (let i = 0; i < LINEUP_SIZE; i++) {
         const member = createRosterMember(defaultPlayerNames[i], "");
@@ -212,58 +244,86 @@ function getRosterMember(id) {
     return state.roster.find(p => p.id === id);
 }
 
-// 選手リストの描画（出場中の9スロット分）
+// セット切り替えタブの描画（S1, S2...）。現在記録中のセット以外は閲覧専用になる
+function renderSetTabs() {
+    const tabsEl = document.getElementById("set-tabs");
+    if (!tabsEl) return;
+    tabsEl.innerHTML = state.sets.map((_, idx) => {
+        const isActive = idx === state.viewingSetIndex;
+        return `<button class="set-tab-btn${isActive ? " active" : ""}" onclick="switchViewingSet(${idx})">S${idx + 1}</button>`;
+    }).join("");
+}
+
+// 表示中のセットを切り替える（記録中セット以外は閲覧専用）
+function switchViewingSet(idx) {
+    if (idx < 0 || idx >= state.sets.length) return;
+    state.viewingSetIndex = idx;
+    renderPlayers();
+}
+
+// スタッツ記録セル12列分のHTMLを生成（記録中セットならボタン、それ以外なら閲覧専用表示）
+function buildStatCellsHtml(playerId, stats, isLive) {
+    const cells = [
+        { cls: "g-serve point", fn: "recordServe", arg: "'P'", val: stats.serve.P },
+        { cls: "g-serve miss", fn: "recordServe", arg: "'M'", val: stats.serve.M },
+        { cls: "g-receive a", fn: "recordReceive", arg: "'A'", val: stats.receive.A },
+        { cls: "g-receive b", fn: "recordReceive", arg: "'B'", val: stats.receive.B },
+        { cls: "g-receive c", fn: "recordReceive", arg: "'C'", val: stats.receive.C },
+        { cls: "g-receive miss", fn: "recordReceive", arg: "'D'", val: stats.receive.D },
+        { cls: "g-attack point", fn: "recordAttack", arg: "'P'", val: stats.attack.P },
+        { cls: "g-attack miss", fn: "recordAttack", arg: "'M'", val: stats.attack.M },
+        { cls: "g-block point", fn: "recordBlock", arg: "'P'", val: stats.block.P },
+        { cls: "g-block miss", fn: "recordBlock", arg: "'M'", val: stats.block.M },
+        { cls: "g-other point", fn: "recordOther", arg: "'P'", val: stats.other.P },
+        { cls: "g-other miss", fn: "recordOther", arg: "'M'", val: stats.other.M }
+    ];
+    return cells.map(c => isLive
+        ? `<button class="cell-btn ${c.cls}" onclick="${c.fn}(${playerId}, ${c.arg})"><span class="count">${c.val}</span></button>`
+        : `<div class="cell-btn readonly ${c.cls}"><span class="count">${c.val}</span></div>`
+    ).join("");
+}
+
+// 選手リストの描画（出場中の9スロット分。表示中セットが記録中セットなら編集可、過去セットなら閲覧専用）
 function renderPlayers() {
+    renderSetTabs();
+
     const listContainer = document.getElementById("players-list");
     listContainer.innerHTML = "";
 
-    state.lineup.forEach((rosterId, idx) => {
+    const isLive = state.viewingSetIndex === state.currentSetIndex;
+    const viewedSet = state.sets[state.viewingSetIndex];
+    const lineupForView = isLive ? state.lineup : (viewedSet.lineup || state.lineup);
+
+    lineupForView.forEach((rosterId, idx) => {
         const player = getRosterMember(rosterId);
         const row = document.createElement("div");
         row.className = "player-row";
 
         if (!player) {
             // 交代で選手が外れたままの空きスロット
+            const noCell = isLive
+                ? `<button class="player-no-btn" onclick="openSubPicker(${idx})">-</button>`
+                : `<span class="player-no-btn readonly">-</span>`;
             row.innerHTML = `
-                <button class="player-no-btn" onclick="openSubPicker(${idx})">-</button>
+                ${noCell}
                 <div class="player-name-container"><span class="player-empty-label">未設定</span></div>
-                <div></div><div></div>
-                <div></div><div></div><div></div><div></div>
-                <div></div><div></div>
-                <div></div><div></div>
-                <div></div><div></div>
+                ${buildStatCellsHtml(null, createEmptyStats(), false)}
             `;
             listContainer.appendChild(row);
             return;
         }
 
+        const stats = peekSetStats(state.viewingSetIndex, player.id);
+        const noCell = isLive
+            ? `<button class="player-no-btn" onclick="openSubPicker(${idx})">${escapeHtml(player.number)}</button>`
+            : `<span class="player-no-btn readonly">${escapeHtml(player.number)}</span>`;
+
         row.innerHTML = `
-            <button class="player-no-btn" onclick="openSubPicker(${idx})">${escapeHtml(player.number)}</button>
+            ${noCell}
             <div class="player-name-container">
                 <span class="player-name-display">${escapeHtml(player.name)}</span>
             </div>
-
-            <!-- サービス: エース / 失点 -->
-            <button class="cell-btn g-serve point" onclick="recordServe(${player.id}, 'P')"><span class="count">${player.serve.P}</span></button>
-            <button class="cell-btn g-serve miss" onclick="recordServe(${player.id}, 'M')"><span class="count">${player.serve.M}</span></button>
-
-            <!-- レシーブ: 優 / 良 / 可 / 不可 -->
-            <button class="cell-btn g-receive a" onclick="recordReceive(${player.id}, 'A')"><span class="count">${player.receive.A}</span></button>
-            <button class="cell-btn g-receive b" onclick="recordReceive(${player.id}, 'B')"><span class="count">${player.receive.B}</span></button>
-            <button class="cell-btn g-receive c" onclick="recordReceive(${player.id}, 'C')"><span class="count">${player.receive.C}</span></button>
-            <button class="cell-btn g-receive miss" onclick="recordReceive(${player.id}, 'D')"><span class="count">${player.receive.D}</span></button>
-
-            <!-- アタック: 得点 / 失点 -->
-            <button class="cell-btn g-attack point" onclick="recordAttack(${player.id}, 'P')"><span class="count">${player.attack.P}</span></button>
-            <button class="cell-btn g-attack miss" onclick="recordAttack(${player.id}, 'M')"><span class="count">${player.attack.M}</span></button>
-
-            <!-- ブロック: 得点 / 失点 -->
-            <button class="cell-btn g-block point" onclick="recordBlock(${player.id}, 'P')"><span class="count">${player.block.P}</span></button>
-            <button class="cell-btn g-block miss" onclick="recordBlock(${player.id}, 'M')"><span class="count">${player.block.M}</span></button>
-
-            <!-- その他: 得点 / ミス -->
-            <button class="cell-btn g-other point" onclick="recordOther(${player.id}, 'P')"><span class="count">${player.other.P}</span></button>
-            <button class="cell-btn g-other miss" onclick="recordOther(${player.id}, 'M')"><span class="count">${player.other.M}</span></button>
+            ${buildStatCellsHtml(player.id, stats, isLive)}
         `;
         listContainer.appendChild(row);
     });
@@ -409,10 +469,17 @@ function adjustScore(side, amount) {
         }
         state.scores.home = 0;
         state.scores.away = 0;
+
+        // 終了したセットにその時点のラインアップを記録し、新しいセットの記録を開始する
+        state.sets[state.currentSetIndex].lineup = JSON.parse(JSON.stringify(state.lineup));
+        state.sets.push({ stats: {} });
+        state.currentSetIndex += 1;
+        state.viewingSetIndex = state.currentSetIndex;
     }
 
     updateScoreUI();
     resetServeState();
+    renderPlayers();
     saveState();
 }
 
@@ -442,15 +509,16 @@ function recordServe(rosterId, type) {
     const player = getRosterMember(rosterId);
     if (!player) return;
     pushUndoSnapshot();
+    const stats = getOrCreateSetStats(state.currentSetIndex, rosterId);
 
     if (type === 'P') {
         // サーブ得点：得点加算、自チームに+1点、サーブ状態リセット
-        player.serve.P += 1;
+        stats.serve.P += 1;
         adjustScore('home', 1);
         resetServeState();
     } else if (type === 'M') {
         // サーブミス
-        player.serve.M += 1;
+        stats.serve.M += 1;
         if (!state.isSecondServe) {
             // 1回目：エラーのみインクリメント、失点しない、2ndサーブ移行
             state.isSecondServe = true;
@@ -471,7 +539,8 @@ function recordAttack(rosterId, type) {
     const player = getRosterMember(rosterId);
     if (!player) return;
     pushUndoSnapshot();
-    player.attack[type] += 1;
+    const stats = getOrCreateSetStats(state.currentSetIndex, rosterId);
+    stats.attack[type] += 1;
 
     if (type === 'P') {
         adjustScore('home', 1); // スパイクポイント
@@ -489,7 +558,8 @@ function recordReceive(rosterId, type) {
     const player = getRosterMember(rosterId);
     if (!player) return;
     pushUndoSnapshot();
-    player.receive[type] += 1;
+    const stats = getOrCreateSetStats(state.currentSetIndex, rosterId);
+    stats.receive[type] += 1;
 
     // レシーブ不可（D）は相手得点
     if (type === 'D') {
@@ -506,7 +576,8 @@ function recordBlock(rosterId, type) {
     const player = getRosterMember(rosterId);
     if (!player) return;
     pushUndoSnapshot();
-    player.block[type] += 1;
+    const stats = getOrCreateSetStats(state.currentSetIndex, rosterId);
+    stats.block[type] += 1;
 
     if (type === 'P') {
         adjustScore('home', 1); // ブロックポイント
@@ -524,7 +595,8 @@ function recordOther(rosterId, type) {
     const player = getRosterMember(rosterId);
     if (!player) return;
     pushUndoSnapshot();
-    player.other[type] += 1;
+    const stats = getOrCreateSetStats(state.currentSetIndex, rosterId);
+    stats.other[type] += 1;
 
     if (type === 'P') {
         adjustScore('home', 1);
@@ -543,9 +615,9 @@ function resetMatch() {
         pushUndoSnapshot();
         state.scores = { home: 0, away: 0, setsHome: 0, setsAway: 0 };
         state.isSecondServe = false;
-        state.roster.forEach(player => {
-            Object.assign(player, createEmptyStats());
-        });
+        state.sets = [{ stats: {} }];
+        state.currentSetIndex = 0;
+        state.viewingSetIndex = 0;
 
         saveState();
         updateScoreUI();
@@ -630,14 +702,32 @@ function saveHistory(history) {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 }
 
-// 現在記録中の試合を履歴に保存
+// 登録選手ごとに全セット分のスタッツを合算する（実績保存・CSV出力は通算成績で表示するため）
+function computeTotalsForRoster(roster, sets) {
+    return roster.map(player => {
+        const total = createEmptyStats();
+        sets.forEach(set => {
+            const s = set.stats[player.id];
+            if (!s) return;
+            total.serve.P += s.serve.P; total.serve.M += s.serve.M;
+            total.receive.A += s.receive.A; total.receive.B += s.receive.B;
+            total.receive.C += s.receive.C; total.receive.D += s.receive.D;
+            total.attack.P += s.attack.P; total.attack.M += s.attack.M;
+            total.block.P += s.block.P; total.block.M += s.block.M;
+            total.other.P += s.other.P; total.other.M += s.other.M;
+        });
+        return { number: player.number, name: player.name, ...total };
+    });
+}
+
+// 現在記録中の試合を履歴に保存（選手スタッツは全セット通算で保存する）
 function saveCurrentMatchToHistory() {
     const history = loadHistory();
     history.unshift({
         id: Date.now(),
         matchInfo: JSON.parse(JSON.stringify(state.matchInfo)),
         scores: JSON.parse(JSON.stringify(state.scores)),
-        roster: JSON.parse(JSON.stringify(state.roster))
+        roster: computeTotalsForRoster(state.roster, state.sets)
     });
     saveHistory(history);
     showHistoryList();
