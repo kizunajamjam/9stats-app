@@ -612,21 +612,43 @@ function recordOther(rosterId, type) {
     saveState();
 }
 
+// スコア・セットスタッツの初期化処理（リセットと試合終了の両方から共通で使う）
+function resetScoresAndStats() {
+    state.scores = { home: 0, away: 0, setsHome: 0, setsAway: 0 };
+    state.isSecondServe = false;
+    state.sets = [{ stats: {} }];
+    state.currentSetIndex = 0;
+    state.viewingSetIndex = 0;
+}
+
 // マッチリセット（選手登録・背番号・試合情報は保持し、スコアとスタッツのみ初期化）
 function resetMatch() {
     if (confirm("スコアとスタッツをリセットしますか？（選手登録・背番号・試合情報は保持されます）")) {
         pushUndoSnapshot();
-        state.scores = { home: 0, away: 0, setsHome: 0, setsAway: 0 };
-        state.isSecondServe = false;
-        state.sets = [{ stats: {} }];
-        state.currentSetIndex = 0;
-        state.viewingSetIndex = 0;
+        resetScoresAndStats();
 
         saveState();
         updateScoreUI();
         renderPlayers();
         updateServeIndicator();
     }
+}
+
+// 試合終了（現在の記録を履歴に保存してから、次の試合のためにスコア・スタッツをリセットする）
+function endMatch() {
+    const confirmed = confirm(`試合を終了して記録を保存しますか？（セット ${state.scores.setsHome}-${state.scores.setsAway}）`);
+    if (!confirmed) return;
+
+    saveMatchSnapshotToHistory();
+
+    pushUndoSnapshot();
+    resetScoresAndStats();
+    saveState();
+    updateScoreUI();
+    renderPlayers();
+    updateServeIndicator();
+
+    goHome();
 }
 
 // CSV用フィールドエスケープ（カンマ・改行・ダブルクオートを含む値に対応）
@@ -723,8 +745,8 @@ function computeTotalsForRoster(roster, sets) {
     });
 }
 
-// 現在記録中の試合を履歴に保存（選手スタッツは全セット通算で保存する）
-function saveCurrentMatchToHistory() {
+// 現在記録中の試合を履歴に保存する（選手スタッツは全セット通算）。実績画面・試合終了の両方から呼ばれる
+function saveMatchSnapshotToHistory() {
     const history = loadHistory();
     history.unshift({
         id: Date.now(),
@@ -733,6 +755,11 @@ function saveCurrentMatchToHistory() {
         roster: computeTotalsForRoster(state.roster, state.sets)
     });
     saveHistory(history);
+}
+
+// 実績画面の「現在の試合を保存」ボタン用
+function saveCurrentMatchToHistory() {
+    saveMatchSnapshotToHistory();
     showHistoryList();
 }
 
