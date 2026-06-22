@@ -216,7 +216,7 @@ body {
 }
 
 .stats-table-header {
-    padding: 6px 4px;
+    padding: 4px 4px;
     font-size: 0.65rem;
     color: var(--text-secondary);
     font-weight: 600;
@@ -226,6 +226,24 @@ body {
     top: 0;
     background: #ffffff;
     z-index: 10;
+}
+
+.stats-table-header > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+}
+
+/* グループ名（サ/レ/ア/ブ/他）を文字でも示す小さな見出し */
+.stats-table-header .header-group {
+    font-size: 0.5rem;
+    font-weight: 600;
+}
+
+.stats-table-header .header-letter {
+    font-size: 0.65rem;
+    font-weight: 700;
 }
 
 .players-list {
@@ -239,7 +257,7 @@ body {
     background: var(--card-bg);
     border-bottom: 1px solid var(--card-border);
     padding: 2px 4px;
-    height: calc((90 * var(--vh) - 35px) / 9); /* 記録エリアからヘッダー分を引いた高さを9等分 */
+    height: calc((90 * var(--vh) - 42px) / 9); /* 記録エリアからヘッダー分（2行表示で少し高くなった分）を引いた高さを9等分 */
     min-height: 34px;
     box-sizing: border-box;
 }
@@ -302,27 +320,17 @@ body {
 .cell-btn {
     width: 100%;
     height: 90%;
-    min-height: 30px;
+    min-height: 24px;
     border-radius: 4px;
     border: 1px solid var(--btn-border);
     background: var(--btn-bg);
     color: var(--text-primary);
     cursor: pointer;
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
-    gap: 1px;
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     font-family: inherit;
-    line-height: 1;
-}
-
-/* 何のボタンか色だけでなく文字でも分かるように、ボタン上部に短いラベルを表示する */
-.cell-btn .cell-label {
-    font-size: 0.55rem;
-    font-weight: 600;
-    color: var(--text-secondary);
 }
 
 .cell-btn .count {

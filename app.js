@@ -273,25 +273,24 @@ function switchViewingSet(idx) {
 }
 
 // スタッツ記録セル12列分のHTMLを生成（記録中セットならボタン、それ以外なら閲覧専用表示）
-// label：色だけでなく文字でも何のボタンか分かるように、ボタン上部に薄く表示する
 function buildStatCellsHtml(playerId, stats, isLive) {
     const cells = [
-        { cls: "g-serve point", fn: "recordServe", arg: "'P'", val: stats.serve.P, label: "得点" },
-        { cls: "g-serve miss", fn: "recordServe", arg: "'M'", val: stats.serve.M, label: "失点" },
-        { cls: "g-receive a", fn: "recordReceive", arg: "'A'", val: stats.receive.A, label: "優" },
-        { cls: "g-receive b", fn: "recordReceive", arg: "'B'", val: stats.receive.B, label: "良" },
-        { cls: "g-receive c", fn: "recordReceive", arg: "'C'", val: stats.receive.C, label: "可" },
-        { cls: "g-receive miss", fn: "recordReceive", arg: "'D'", val: stats.receive.D, label: "不可" },
-        { cls: "g-attack point", fn: "recordAttack", arg: "'P'", val: stats.attack.P, label: "得点" },
-        { cls: "g-attack miss", fn: "recordAttack", arg: "'M'", val: stats.attack.M, label: "失点" },
-        { cls: "g-block point", fn: "recordBlock", arg: "'P'", val: stats.block.P, label: "得点" },
-        { cls: "g-block miss", fn: "recordBlock", arg: "'M'", val: stats.block.M, label: "失点" },
-        { cls: "g-other point", fn: "recordOther", arg: "'P'", val: stats.other.P, label: "得点" },
-        { cls: "g-other miss", fn: "recordOther", arg: "'M'", val: stats.other.M, label: "ミス" }
+        { cls: "g-serve point", fn: "recordServe", arg: "'P'", val: stats.serve.P },
+        { cls: "g-serve miss", fn: "recordServe", arg: "'M'", val: stats.serve.M },
+        { cls: "g-receive a", fn: "recordReceive", arg: "'A'", val: stats.receive.A },
+        { cls: "g-receive b", fn: "recordReceive", arg: "'B'", val: stats.receive.B },
+        { cls: "g-receive c", fn: "recordReceive", arg: "'C'", val: stats.receive.C },
+        { cls: "g-receive miss", fn: "recordReceive", arg: "'D'", val: stats.receive.D },
+        { cls: "g-attack point", fn: "recordAttack", arg: "'P'", val: stats.attack.P },
+        { cls: "g-attack miss", fn: "recordAttack", arg: "'M'", val: stats.attack.M },
+        { cls: "g-block point", fn: "recordBlock", arg: "'P'", val: stats.block.P },
+        { cls: "g-block miss", fn: "recordBlock", arg: "'M'", val: stats.block.M },
+        { cls: "g-other point", fn: "recordOther", arg: "'P'", val: stats.other.P },
+        { cls: "g-other miss", fn: "recordOther", arg: "'M'", val: stats.other.M }
     ];
     return cells.map(c => isLive
-        ? `<button class="cell-btn ${c.cls}" onclick="${c.fn}(${playerId}, ${c.arg})"><span class="cell-label">${c.label}</span><span class="count">${c.val}</span></button>`
-        : `<div class="cell-btn readonly ${c.cls}"><span class="cell-label">${c.label}</span><span class="count">${c.val}</span></div>`
+        ? `<button class="cell-btn ${c.cls}" onclick="${c.fn}(${playerId}, ${c.arg})"><span class="count">${c.val}</span></button>`
+        : `<div class="cell-btn readonly ${c.cls}"><span class="count">${c.val}</span></div>`
     ).join("");
 }
 
