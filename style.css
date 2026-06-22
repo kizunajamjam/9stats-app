@@ -10,6 +10,7 @@
     --accent-green: #10b981;
     --accent-red: #ef4444;
     --accent-orange: #f59e0b;
+    --accent-purple: #8b5cf6;
     --btn-bg: #ffffff;
     --btn-border: #e2e8f0;
     /* 横向きレイアウト計算用の単位。縦持ち時は回転に合わせて入れ替える */
@@ -346,6 +347,19 @@ body {
     background: var(--card-hover-bg);
     border-color: var(--btn-border);
 }
+
+/* 項目グループごとの背景色分け（サーブ/レシーブ/アタック/ブロック/その他が一目で分かるようにする） */
+.cell-btn.g-serve { background: #eaf2ff; border-color: #bcd6fb; }
+.cell-btn.g-receive { background: #eafcf3; border-color: #ade8c8; }
+.cell-btn.g-attack { background: #fff6ea; border-color: #fbdca0; }
+.cell-btn.g-block { background: #f5f0fe; border-color: #d6c0fa; }
+.cell-btn.g-other { background: #f1f4f6; border-color: #d7dee4; }
+
+.stats-table-header .g-serve { color: var(--accent-blue); }
+.stats-table-header .g-receive { color: var(--accent-green); }
+.stats-table-header .g-attack { color: var(--accent-orange); }
+.stats-table-header .g-block { color: var(--accent-purple); }
+.stats-table-header .g-other { color: var(--text-secondary); }
 
 .status-dot {
     width: 6px;
