@@ -12,6 +12,9 @@
     --accent-orange: #f59e0b;
     --btn-bg: #ffffff;
     --btn-border: #e2e8f0;
+    /* 横向きレイアウト計算用の単位。縦持ち時は回転に合わせて入れ替える */
+    --vh: 1vh;
+    --vw: 1vw;
 }
 
 * {
@@ -27,53 +30,33 @@ body {
     font-family: 'Outfit', 'Noto Sans JP', sans-serif;
     background: var(--bg-gradient);
     color: var(--text-primary);
-    height: 100vh;
+    height: calc(100 * var(--vh));
     overflow: hidden; /* 画面全体のスクロールを防ぐ */
     touch-action: manipulation;
 }
 
-/* 縦画面時の警告表示 */
-.portrait-warning {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: #ffffff;
-    color: var(--text-primary);
-    z-index: 9999;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 20px;
-    box-sizing: border-box;
-}
-
-.portrait-warning-icon {
-    font-size: 3rem;
-    margin-bottom: 15px;
-    animation: rotateHint 2s infinite ease-in-out;
-}
-
-@keyframes rotateHint {
-    0%, 100% { transform: rotate(0deg); }
-    50% { transform: rotate(-90deg); }
-}
-
-@media (orientation: portrait) {
-    .portrait-warning {
-        display: flex;
+/* 縦持ちでも画面全体を回転させて強制的に横向き表示にする */
+@media screen and (orientation: portrait) {
+    :root {
+        /* 回転後は実際のvhとvwの役割が入れ替わるため、レイアウト計算用の単位を入れ替える */
+        --vh: 1vw;
+        --vw: 1vh;
     }
-    .app-container {
-        display: none;
+    html {
+        transform: rotate(90deg);
+        transform-origin: left top;
+        width: 100vh;
+        height: 100vw;
+        overflow-x: hidden;
+        position: absolute;
+        top: 0;
+        left: 100%;
     }
 }
 
 .app-container {
-    width: 100vw;
-    height: 100vh;
+    width: calc(100 * var(--vw));
+    height: calc(100 * var(--vh));
     display: flex;
     flex-direction: column;
     padding: 8px 12px;
@@ -83,7 +66,7 @@ body {
 
 /* 最小の1行ヘッダーのスタイリング */
 .app-header {
-    height: 8vh;
+    height: calc(8 * var(--vh));
     border-bottom: 1px solid var(--card-border);
     display: flex;
     align-items: center;
@@ -180,7 +163,7 @@ body {
 /* スタッツ記録エリア */
 .stats-workspace {
     width: 100%;
-    height: 90vh; /* ヘッダー以外の全領域を使用 */
+    height: calc(90 * var(--vh)); /* ヘッダー以外の全領域を使用 */
     overflow: hidden; /* 横スクロール・縦スクロール両方を禁止 */
     margin-bottom: 0px;
     background: #ffffff;
@@ -218,7 +201,7 @@ body {
     background: var(--card-bg);
     border-bottom: 1px solid var(--card-border);
     padding: 2px 6px;
-    height: calc((90vh - 35px) / 9); /* 90vhの記録エリアからヘッダー分を引いた高さを9等分 */
+    height: calc((90 * var(--vh) - 35px) / 9); /* 記録エリアからヘッダー分を引いた高さを9等分 */
     min-height: 34px;
     box-sizing: border-box;
 }
@@ -334,7 +317,7 @@ body {
     align-items: center;
     border-top: 1px solid var(--card-border);
     padding-top: 4px;
-    height: 8vh;
+    height: calc(8 * var(--vh));
     font-size: 0.7rem;
     color: var(--text-secondary);
 }
