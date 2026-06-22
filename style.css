@@ -117,12 +117,6 @@ body {
     justify-content: center;
 }
 
-.sets-mini {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    margin: 0 4px;
-}
-
 .serve-indicator-mini {
     display: flex;
     align-items: center;
@@ -169,31 +163,46 @@ body {
     border-radius: 8px;
 }
 
-/* セット切り替えタブ（S1, S2...）。現在記録中のセット以外は閲覧専用になる */
-.set-tabs {
+/* セット切り替え兼結果表示（ヘッダーにコンパクト配置）。タップで表示セットを切り替えられる */
+.set-tabs-mini {
     display: flex;
-    gap: 4px;
-    padding: 4px 4px 0;
-    overflow-x: auto;
+    gap: 3px;
+    flex-shrink: 0;
 }
 
 .set-tab-btn {
     font-family: inherit;
-    font-size: 0.65rem;
-    font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 999px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border-radius: 50%;
     border: 1px solid var(--btn-border);
     background: var(--btn-bg);
     color: var(--text-secondary);
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
 }
 
-.set-tab-btn.active {
+/* 自チームが取ったセットは青、相手が取ったセットは橙。進行中セットは未着色のまま */
+.set-tab-btn.won-home {
     background: var(--accent-blue);
     border-color: var(--accent-blue);
     color: #ffffff;
+}
+
+.set-tab-btn.won-away {
+    background: var(--accent-orange);
+    border-color: var(--accent-orange);
+    color: #ffffff;
+}
+
+.set-tab-btn.active {
+    box-shadow: 0 0 0 2px var(--text-primary);
 }
 
 /* 列構成（記録ボタンのみ・計算で出せる本数/決定率セルは省いてボタンを大きくする）:
@@ -229,7 +238,7 @@ body {
     background: var(--card-bg);
     border-bottom: 1px solid var(--card-border);
     padding: 2px 4px;
-    height: calc((90 * var(--vh) - 60px) / 9); /* 記録エリアからタブ+ヘッダー分を引いた高さを9等分 */
+    height: calc((90 * var(--vh) - 35px) / 9); /* 記録エリアからヘッダー分を引いた高さを9等分 */
     min-height: 34px;
     box-sizing: border-box;
 }

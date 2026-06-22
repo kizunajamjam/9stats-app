@@ -244,13 +244,16 @@ function getRosterMember(id) {
     return state.roster.find(p => p.id === id);
 }
 
-// セット切り替えタブの描画（S1, S2...）。現在記録中のセット以外は閲覧専用になる
+// セット切り替えタブの描画（ヘッダーにコンパクト表示。自チーム取得=青 / 相手取得=橙 / 進行中=灰）
 function renderSetTabs() {
     const tabsEl = document.getElementById("set-tabs");
     if (!tabsEl) return;
-    tabsEl.innerHTML = state.sets.map((_, idx) => {
+    tabsEl.innerHTML = state.sets.map((set, idx) => {
         const isActive = idx === state.viewingSetIndex;
-        return `<button class="set-tab-btn${isActive ? " active" : ""}" onclick="switchViewingSet(${idx})">S${idx + 1}</button>`;
+        let winClass = "";
+        if (set.winner === "home") winClass = " won-home";
+        else if (set.winner === "away") winClass = " won-away";
+        return `<button class="set-tab-btn${isActive ? " active" : ""}${winClass}" onclick="switchViewingSet(${idx})">${idx + 1}</button>`;
     }).join("");
 }
 
@@ -443,8 +446,6 @@ function substitutePlayer(slotIndex, rosterId) {
 function updateScoreUI() {
     document.getElementById("score-home").innerText = state.scores.home;
     document.getElementById("score-away").innerText = state.scores.away;
-    document.getElementById("sets-home").innerText = state.scores.setsHome;
-    document.getElementById("sets-away").innerText = state.scores.setsAway;
 }
 
 // 手動スコア調整（ヘッダーの+/-ボタン用。Undoスナップショットを記録してから調整する）
@@ -472,7 +473,8 @@ function adjustScore(side, amount) {
             state.scores.home = 0;
             state.scores.away = 0;
 
-            // 終了したセットにその時点のラインアップを記録し、新しいセットの記録を開始する
+            // 終了したセットに勝者とその時点のラインアップを記録し、新しいセットの記録を開始する
+            state.sets[state.currentSetIndex].winner = side;
             state.sets[state.currentSetIndex].lineup = JSON.parse(JSON.stringify(state.lineup));
             state.sets.push({ stats: {} });
             state.currentSetIndex += 1;

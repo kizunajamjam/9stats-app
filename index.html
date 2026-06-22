@@ -37,13 +37,14 @@
                     <span id="score-home" class="score-val-mini">0</span>
                     <button class="score-btn-mini" onclick="manualAdjustScore('home', 1)">+</button>
 
-                    <span class="sets-mini">(<span id="sets-home">0</span>-<span id="sets-away">0</span>)</span>
-
                     <span class="score-side-label">相:</span>
                     <button class="score-btn-mini" onclick="manualAdjustScore('away', -1)">-</button>
                     <span id="score-away" class="score-val-mini">0</span>
                     <button class="score-btn-mini" onclick="manualAdjustScore('away', 1)">+</button>
                 </div>
+
+                <!-- セット切り替え兼結果表示（自チーム取得=青 / 相手取得=橙 / 進行中=灰） -->
+                <div class="set-tabs-mini" id="set-tabs"></div>
 
                 <div class="serve-indicator-mini">
                     <span class="status-dot" id="serve-status-dot"></span>
@@ -60,7 +61,6 @@
 
         <!-- メイングリッドエリア -->
         <main class="stats-workspace">
-            <div class="set-tabs" id="set-tabs"></div>
             <div class="stats-table-header">
                 <div>番</div>
                 <div>名</div>
