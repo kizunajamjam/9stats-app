@@ -781,12 +781,6 @@ function formatDateTime(isoStr) {
     return d.toLocaleString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-// 実績画面の「現在の試合を保存」ボタン用
-function saveCurrentMatchToHistory() {
-    saveMatchSnapshotToHistory();
-    showHistoryList();
-}
-
 // 履歴の削除
 function deleteHistoryMatch(id) {
     if (!confirm("この試合の記録を削除しますか？")) return;
