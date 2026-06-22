@@ -235,10 +235,15 @@ body {
     line-height: 1.2;
 }
 
-/* グループ名（サ/レ/ア/ブ/他）を文字でも示す小さな見出し */
+/* グループ名（サーブ/レシーブ/アタック/ブロック/その他）を文字でも示す小さな見出し */
 .stats-table-header .header-group {
-    font-size: 0.5rem;
+    font-size: 0.45rem;
     font-weight: 600;
+    white-space: nowrap;
+    letter-spacing: -0.02em;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .stats-table-header .header-letter {
