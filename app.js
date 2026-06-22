@@ -220,30 +220,23 @@ function renderPlayers() {
             row.innerHTML = `
                 <button class="player-no-btn" onclick="openSubPicker(${idx})">-</button>
                 <div class="player-name-container"><span class="player-empty-label">未設定</span></div>
-                <div class="cell-count">-</div><div></div><div></div>
+                <div></div><div></div>
                 <div></div><div></div><div></div><div></div>
-                <div class="cell-count">-</div><div class="cell-count">-</div><div></div><div></div>
-                <div class="cell-count">-</div><div></div><div></div>
+                <div></div><div></div>
+                <div></div><div></div>
                 <div></div><div></div>
             `;
             listContainer.appendChild(row);
             return;
         }
 
-        // 各カテゴリの本数・決定率の計算
-        const serveTotal = player.serve.P + player.serve.M;
-        const attackTotal = player.attack.P + player.attack.M;
-        const attackRate = attackTotal > 0 ? ((player.attack.P / attackTotal) * 100).toFixed(1) : "0.0";
-        const blockTotal = player.block.P + player.block.M;
-
         row.innerHTML = `
-            <button class="player-no-btn" onclick="openSubPicker(${idx})">${player.number ? escapeHtml(player.number) : idx + 1}</button>
+            <button class="player-no-btn" onclick="openSubPicker(${idx})">${escapeHtml(player.number)}</button>
             <div class="player-name-container">
                 <input type="text" class="player-name-input" value="${escapeHtml(player.name)}" onchange="updateRosterName(${player.id}, this.value)">
             </div>
 
-            <!-- サービス: 本数 / エース / 失点 -->
-            <div class="cell-count">${serveTotal}</div>
+            <!-- サービス: エース / 失点 -->
             <button class="cell-btn g-serve point" onclick="recordServe(${player.id}, 'P')"><span class="count">${player.serve.P}</span></button>
             <button class="cell-btn g-serve miss" onclick="recordServe(${player.id}, 'M')"><span class="count">${player.serve.M}</span></button>
 
@@ -253,14 +246,11 @@ function renderPlayers() {
             <button class="cell-btn g-receive c" onclick="recordReceive(${player.id}, 'C')"><span class="count">${player.receive.C}</span></button>
             <button class="cell-btn g-receive miss" onclick="recordReceive(${player.id}, 'D')"><span class="count">${player.receive.D}</span></button>
 
-            <!-- アタック: 決定率 / 本数 / 得点 / 失点 -->
-            <div class="cell-rate" id="rate-${idx}">${attackRate}%</div>
-            <div class="cell-count">${attackTotal}</div>
+            <!-- アタック: 得点 / 失点 -->
             <button class="cell-btn g-attack point" onclick="recordAttack(${player.id}, 'P')"><span class="count">${player.attack.P}</span></button>
             <button class="cell-btn g-attack miss" onclick="recordAttack(${player.id}, 'M')"><span class="count">${player.attack.M}</span></button>
 
-            <!-- ブロック: 本数 / 得点 / 失点 -->
-            <div class="cell-count">${blockTotal}</div>
+            <!-- ブロック: 得点 / 失点 -->
             <button class="cell-btn g-block point" onclick="recordBlock(${player.id}, 'P')"><span class="count">${player.block.P}</span></button>
             <button class="cell-btn g-block miss" onclick="recordBlock(${player.id}, 'M')"><span class="count">${player.block.M}</span></button>
 

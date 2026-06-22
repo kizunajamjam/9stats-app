@@ -174,12 +174,12 @@ body {
     border-radius: 8px;
 }
 
-/* 列構成（参考アプリと同じ16列）:
-   番,名 | サ,P,M | A,B,C,D | 率,ス,P,M | ブ,P,M | P,M */
+/* 列構成（記録ボタンのみ・計算で出せる本数/決定率セルは省いてボタンを大きくする）:
+   番,名 | P,M(サーブ) | A,B,C,D(レシーブ) | P,M(アタック) | P,M(ブロック) | P,M(その他) */
 .stats-table-header,
 .player-row {
     display: grid;
-    grid-template-columns: 24px 50px 28px 1fr 1fr 1fr 1fr 1fr 1fr 34px 28px 1fr 1fr 28px 1fr 1fr 1fr 1fr;
+    grid-template-columns: 24px 50px repeat(12, 1fr);
     gap: 3px;
 }
 
@@ -294,22 +294,6 @@ body {
 .cell-btn .count {
     font-size: 0.8rem;
     font-weight: 700;
-}
-
-/* 本数（サ/ス/ブ）の非インタラクティブな表示 */
-.cell-count {
-    text-align: center;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--text-secondary);
-}
-
-/* スパイク決定率の表示 */
-.cell-rate {
-    text-align: center;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--accent-blue);
 }
 
 /* 各種アクション色分け */
