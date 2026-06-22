@@ -29,7 +29,7 @@
         <!-- ヘッダーエリア（最小の1行） -->
         <header class="app-header">
             <div class="header-minimal-row">
-                <button class="action-btn-mini" onclick="goHome()">戻る</button>
+                <button class="action-btn-mini" onclick="goHome()">ホーム</button>
 
                 <div class="score-board-mini">
                     <span class="score-side-label">自:</span>
@@ -86,7 +86,7 @@
     <!-- 試合設定画面（選手名・背番号・チーム名・日時・会場） -->
     <div class="screen settings-screen" id="settings-screen">
         <div class="settings-header">
-            <button class="action-btn-mini" onclick="goHome()">戻る</button>
+            <button class="action-btn-mini" onclick="goHome()">ホーム</button>
             <span class="settings-title">試合設定</span>
         </div>
         <div class="settings-body">
@@ -102,7 +102,14 @@
 
                 <label class="settings-label" for="input-opponent">対戦相手</label>
                 <input class="settings-input" type="text" id="input-opponent" placeholder="対戦相手チーム名" onchange="updateMatchInfo('opponent', this.value)">
+
+                <label class="settings-label" for="input-target-score">セット点数</label>
+                <input class="settings-input" type="number" id="input-target-score" min="1" onchange="updateRule('targetScore', this.value)">
+
+                <label class="settings-label" for="input-deuce-margin">デュース差</label>
+                <input class="settings-input" type="number" id="input-deuce-margin" min="0" onchange="updateRule('deuceMargin', this.value)">
             </div>
+            <p class="settings-hint">デュース差を0にすると、セット点数に達した時点で即セット終了します。</p>
 
             <div class="roster-section">
                 <div class="roster-title-row">
@@ -122,7 +129,7 @@
     <!-- 実績画面（試合履歴の保存・一覧・詳細） -->
     <div class="screen settings-screen" id="history-screen">
         <div class="settings-header">
-            <button class="action-btn-mini" onclick="goHome()">戻る</button>
+            <button class="action-btn-mini" onclick="goHome()">ホーム</button>
             <span class="settings-title">実績</span>
         </div>
         <div class="settings-body">

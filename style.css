@@ -142,14 +142,14 @@ body {
 
 .header-actions-mini {
     display: flex;
-    gap: 4px;
+    gap: 10px;
 }
 
 .action-btn-mini {
     font-family: inherit;
     font-size: 0.65rem;
     font-weight: 600;
-    padding: 3px 6px;
+    padding: 4px 8px;
     border-radius: 4px;
     border: 1px solid var(--btn-border);
     background: var(--btn-bg);
@@ -449,6 +449,13 @@ body {
 .settings-input:focus {
     outline: none;
     border-color: var(--accent-blue);
+}
+
+.settings-hint {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    max-width: 420px;
+    margin-bottom: 16px;
 }
 
 .roster-section {

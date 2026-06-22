@@ -12,7 +12,8 @@ const state = {
     roster: [],   // 登録選手（最大20名）: {id, number, name, serve, attack, receive, block, other}
     lineup: [],   // 出場中9スロット分のroster idを格納する配列
     nextId: 0,    // 選手登録用の連番ID
-    matchInfo: { date: "", venue: "", teamName: "", opponent: "" } // 試合情報（日時・会場・チーム名）
+    matchInfo: { date: "", venue: "", teamName: "", opponent: "" }, // 試合情報（日時・会場・チーム名）
+    rules: { targetScore: 21, deuceMargin: 2 } // セットルール（点数・デュース差）
 };
 
 const MAX_ROSTER_SIZE = 20;
@@ -92,6 +93,8 @@ function goSettings() {
     document.getElementById("input-venue").value = state.matchInfo.venue;
     document.getElementById("input-team").value = state.matchInfo.teamName;
     document.getElementById("input-opponent").value = state.matchInfo.opponent;
+    document.getElementById("input-target-score").value = state.rules.targetScore;
+    document.getElementById("input-deuce-margin").value = state.rules.deuceMargin;
     renderRoster();
     showScreen("settings-screen");
 }
@@ -126,6 +129,9 @@ function loadState() {
             ? parsed.nextId
             : (parsed.roster.reduce((max, p) => Math.max(max, p.id), -1) + 1);
         state.matchInfo = parsed.matchInfo;
+        state.rules = (parsed.rules && typeof parsed.rules.targetScore === "number" && typeof parsed.rules.deuceMargin === "number")
+            ? parsed.rules
+            : { targetScore: 21, deuceMargin: 2 };
         return true;
     } catch (e) {
         return false;
@@ -166,6 +172,7 @@ function initMatch() {
         teamName: "",
         opponent: ""
     };
+    state.rules = { targetScore: 21, deuceMargin: 2 };
 
     for (let i = 0; i < LINEUP_SIZE; i++) {
         const member = createRosterMember(defaultPlayerNames[i], "");
@@ -299,6 +306,18 @@ function updateMatchInfo(field, value) {
     saveState();
 }
 
+// セットルール（点数・デュース差）の変更保存
+function updateRule(field, value) {
+    let num = parseInt(value, 10);
+    if (isNaN(num)) {
+        num = field === "targetScore" ? 21 : 2;
+    }
+    if (field === "targetScore" && num < 1) num = 1;
+    if (field === "deuceMargin" && num < 0) num = 0;
+    state.rules[field] = num;
+    saveState();
+}
+
 // 選手登録リスト（最大20名・背番号・選手名）の描画
 function renderRoster() {
     document.getElementById("roster-count").textContent = `(${state.roster.length}/${MAX_ROSTER_SIZE})`;
@@ -378,11 +397,11 @@ function manualAdjustScore(side, amount) {
 function adjustScore(side, amount) {
     state.scores[side] = Math.max(0, state.scores[side] + amount);
 
-    // セット進行管理 (21点先取・2点差が必要)
+    // セット進行管理（設定画面で指定したセット点数・デュース差を使用）
     const other = side === 'home' ? 'away' : 'home';
     const leadScore = state.scores[side];
     const otherScore = state.scores[other];
-    if (leadScore >= 21 && leadScore - otherScore >= 2) {
+    if (leadScore >= state.rules.targetScore && leadScore - otherScore >= state.rules.deuceMargin) {
         if (side === 'home') {
             state.scores.setsHome += 1;
         } else {
