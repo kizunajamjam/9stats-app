@@ -462,19 +462,22 @@ function adjustScore(side, amount) {
     const leadScore = state.scores[side];
     const otherScore = state.scores[other];
     if (leadScore >= state.rules.targetScore && leadScore - otherScore >= state.rules.deuceMargin) {
-        if (side === 'home') {
-            state.scores.setsHome += 1;
-        } else {
-            state.scores.setsAway += 1;
-        }
-        state.scores.home = 0;
-        state.scores.away = 0;
+        const confirmed = confirm(`セット${state.currentSetIndex + 1}を終了しますか？（自:${state.scores.home} 相:${state.scores.away}）`);
+        if (confirmed) {
+            if (side === 'home') {
+                state.scores.setsHome += 1;
+            } else {
+                state.scores.setsAway += 1;
+            }
+            state.scores.home = 0;
+            state.scores.away = 0;
 
-        // 終了したセットにその時点のラインアップを記録し、新しいセットの記録を開始する
-        state.sets[state.currentSetIndex].lineup = JSON.parse(JSON.stringify(state.lineup));
-        state.sets.push({ stats: {} });
-        state.currentSetIndex += 1;
-        state.viewingSetIndex = state.currentSetIndex;
+            // 終了したセットにその時点のラインアップを記録し、新しいセットの記録を開始する
+            state.sets[state.currentSetIndex].lineup = JSON.parse(JSON.stringify(state.lineup));
+            state.sets.push({ stats: {} });
+            state.currentSetIndex += 1;
+            state.viewingSetIndex = state.currentSetIndex;
+        }
     }
 
     updateScoreUI();
