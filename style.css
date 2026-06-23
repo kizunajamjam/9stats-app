@@ -689,6 +689,25 @@ body {
     margin: 10px 0;
 }
 
+.history-detail-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.history-detail-note {
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    background: var(--card-hover-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    max-width: 460px;
+    white-space: pre-wrap;
+}
+
 .history-detail-table-wrap table {
     border-collapse: collapse;
     font-size: 0.7rem;

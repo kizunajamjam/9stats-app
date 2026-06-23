@@ -838,15 +838,17 @@ function computeTotalsForRoster(roster, sets) {
     });
 }
 
-// 現在記録中の試合を履歴に保存する（選手スタッツは全セット通算）。実績画面・試合終了の両方から呼ばれる
+// 現在記録中の試合を履歴に保存する。実績画面・試合終了の両方から呼ばれる
 // 同じ試合を再度保存した場合は新規レコードを追加せず、既存レコードを上書き更新する
+// 選手は識別情報（番号・名前）のみ、スタッツはセットごとに保存する（実績画面で合計とセット別を切り替えられるようにするため）
 function saveMatchSnapshotToHistory() {
     const history = loadHistory();
     const snapshot = {
         updatedAt: new Date().toISOString(),
         matchInfo: JSON.parse(JSON.stringify(state.matchInfo)),
         scores: JSON.parse(JSON.stringify(state.scores)),
-        roster: computeTotalsForRoster(state.roster, state.sets)
+        roster: JSON.parse(JSON.stringify(state.roster)),
+        sets: JSON.parse(JSON.stringify(state.sets))
     };
 
     const existingIndex = state.historyId !== null ? history.findIndex(m => m.id === state.historyId) : -1;
@@ -913,10 +915,17 @@ function renderHistoryList() {
     });
 }
 
+// 履歴詳細画面の表示中の状態（どの試合の、合計かセットNかの表示中か）
+let historyDetailMatchId = null;
+let historyDetailViewIndex = -1; // -1 = 合計、0以上 = セット番号（0始まり）
+
 // 履歴詳細画面の表示
 function showHistoryDetail(id) {
     const match = loadHistory().find(m => m.id === id);
     if (!match) return;
+
+    historyDetailMatchId = id;
+    historyDetailViewIndex = -1;
 
     document.getElementById("history-list-view").style.display = "none";
     document.getElementById("history-detail-view").style.display = "block";
@@ -929,8 +938,62 @@ function showHistoryDetail(id) {
         <div class="history-item-updated">最終更新: ${formatDateTime(match.updatedAt)}</div>
     `;
 
+    renderHistoryDetailTabs(match);
+    renderHistoryDetailBody(match);
+}
+
+// 合計／セット別の切り替えタブを描画する（古い形式の保存データ＝match.setsが無い場合はタブを出さず合計のみにする）
+function renderHistoryDetailTabs(match) {
+    const tabsEl = document.getElementById("history-detail-tabs");
+    const hasSets = Array.isArray(match.sets) && match.sets.length > 0;
+    if (!hasSets) {
+        tabsEl.innerHTML = "";
+        return;
+    }
+
+    const totalBtn = `<button class="action-btn-mini${historyDetailViewIndex === -1 ? " primary" : ""}" onclick="switchHistoryDetailView(-1)">合計</button>`;
+    const setBtns = match.sets.map((_, idx) =>
+        `<button class="action-btn-mini${historyDetailViewIndex === idx ? " primary" : ""}" onclick="switchHistoryDetailView(${idx})">セット${idx + 1}</button>`
+    ).join("");
+    tabsEl.innerHTML = totalBtn + setBtns;
+}
+
+// 合計／セット別の表示を切り替える
+function switchHistoryDetailView(viewIndex) {
+    const match = loadHistory().find(m => m.id === historyDetailMatchId);
+    if (!match) return;
+    historyDetailViewIndex = viewIndex;
+    renderHistoryDetailTabs(match);
+    renderHistoryDetailBody(match);
+}
+
+// 履歴詳細のメモ・テーブル・CSVボタンを、選択中の表示（合計／セットN）に応じて描画する
+function renderHistoryDetailBody(match) {
+    const hasSets = Array.isArray(match.sets) && match.sets.length > 0;
     const roster = match.roster || [];
-    const rows = roster.map(player => {
+    let rows;
+    let note = "";
+
+    if (!hasSets) {
+        // 古い形式の保存データ：roster自体に通算スタッツが入っている
+        rows = roster;
+    } else if (historyDetailViewIndex === -1) {
+        rows = computeTotalsForRoster(roster, match.sets);
+    } else {
+        const setRecord = match.sets[historyDetailViewIndex] || { stats: {} };
+        rows = roster.map(player => ({
+            number: player.number,
+            name: player.name,
+            ...(setRecord.stats[player.id] || createEmptyStats())
+        }));
+        note = setRecord.note || "";
+    }
+
+    document.getElementById("history-detail-note").innerHTML = note
+        ? `<div class="history-detail-note"><strong>メモ:</strong> ${escapeHtml(note)}</div>`
+        : "";
+
+    const tableRows = rows.map(player => {
         const serveTotal = player.serve.P + player.serve.M;
         const totalAttack = player.attack.P + player.attack.M;
         const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
@@ -961,14 +1024,16 @@ function showHistoryDetail(id) {
                         <th>他P</th><th>他M</th>
                     </tr>
                 </thead>
-                <tbody>${rows}</tbody>
+                <tbody>${tableRows}</tbody>
             </table>
         </div>
     `;
 
     document.getElementById("history-detail-csv-btn").onclick = () => {
-        const csvContent = buildCSVContent(info, roster);
-        downloadCSV(csvContent, `9stats_${info.date || "match"}.csv`);
+        const info = match.matchInfo || {};
+        const suffix = (!hasSets || historyDetailViewIndex === -1) ? "" : `_set${historyDetailViewIndex + 1}`;
+        const csvContent = buildCSVContent(info, rows);
+        downloadCSV(csvContent, `9stats_${info.date || "match"}${suffix}.csv`);
     };
 }
 
