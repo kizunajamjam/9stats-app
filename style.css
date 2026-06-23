@@ -56,6 +56,17 @@ body {
         top: 0;
         left: 100%;
     }
+
+    /* メモ入力ダイアログだけ、記録画面の回転を打ち消して縦向きに表示する
+       （ソフトウェアキーボードは実際の端末の向きに従うため、入力ダイアログだけ向きを合わせる） */
+    html.force-landscape #app-dialog-overlay.portrait-mode {
+        width: 100vw;
+        height: 100vh;
+        top: 100vw;
+        left: 0;
+        transform: rotate(-90deg);
+        transform-origin: left top;
+    }
 }
 
 .app-container {

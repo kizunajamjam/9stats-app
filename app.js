@@ -81,7 +81,6 @@ function updateUndoButtonState() {
 // 記録画面用の操作にはこの自作ダイアログを使う。Promiseで結果を返す。
 
 let appDialogResolve = null;
-let appDialogRestoreLandscape = false;
 
 function showAppDialog({ title = "", message = "", showInput = false, defaultValue = "", showCancel = true, okText = "OK", cancelText = "キャンセル" }) {
     return new Promise(resolve => {
@@ -97,14 +96,11 @@ function showAppDialog({ title = "", message = "", showInput = false, defaultVal
         document.getElementById("app-dialog-cancel-btn").textContent = cancelText;
         document.getElementById("app-dialog-ok-btn").textContent = okText;
 
-        // 文字入力があるダイアログ（メモなど）は、ソフトウェアキーボードが正しい向きで出るように
-        // 横向き固定を一時的に解除し、縦向き表示に戻す（閉じたら元に戻す）
-        appDialogRestoreLandscape = showInput && document.documentElement.classList.contains("force-landscape");
-        if (appDialogRestoreLandscape) {
-            document.documentElement.classList.remove("force-landscape");
-        }
-
-        document.getElementById("app-dialog-overlay").style.display = "flex";
+        const overlay = document.getElementById("app-dialog-overlay");
+        // 文字入力があるダイアログ（メモなど）だけ、記録画面はそのまま横向きのまま、
+        // ダイアログ自体だけを縦向きに見えるよう逆回転させる（ソフトウェアキーボードの向きと合わせるため）
+        overlay.classList.toggle("portrait-mode", showInput);
+        overlay.style.display = "flex";
         if (showInput) input.focus();
     });
 }
@@ -112,10 +108,6 @@ function showAppDialog({ title = "", message = "", showInput = false, defaultVal
 // ダイアログのOK/キャンセルボタンから呼ばれる。confirmedがfalsyならnullを返す
 function resolveAppDialog(confirmed) {
     document.getElementById("app-dialog-overlay").style.display = "none";
-    if (appDialogRestoreLandscape) {
-        document.documentElement.classList.add("force-landscape");
-        appDialogRestoreLandscape = false;
-    }
 
     const resolve = appDialogResolve;
     appDialogResolve = null;
