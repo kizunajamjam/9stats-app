@@ -164,14 +164,15 @@ body {
     border-radius: 8px;
 }
 
-/* セット切り替え兼結果表示（ヘッダーにコンパクト配置）。タップで表示セットを切り替えられる */
+/* セット切り替え兼結果表示（ヘッダーにコンパクト配置）。タップで表示セット切り替え＋メモ入力ができる */
 .set-tabs-mini {
     display: flex;
-    gap: 3px;
+    gap: 8px;
     flex-shrink: 0;
 }
 
 .set-tab-btn {
+    position: relative;
     font-family: inherit;
     font-size: 0.6rem;
     font-weight: 700;
@@ -187,6 +188,18 @@ body {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+}
+
+/* メモが入っているセットの目印 */
+.set-tab-note-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-red);
+    border: 1px solid #ffffff;
 }
 
 /* 自チームが取ったセットは青、相手が取ったセットは橙。進行中セットは未着色のまま */
@@ -740,4 +753,38 @@ body {
 
 .sub-modal-item:hover {
     background: var(--card-hover-bg);
+}
+
+/* 記録画面用の確認・通知・メモ入力ダイアログ（標準のconfirm/alertは画面の向きに合わせて回転しないため使わない） */
+.app-dialog-message {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    line-height: 1.6;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+}
+
+.app-dialog-input {
+    display: none;
+    width: 100%;
+    font-family: inherit;
+    font-size: 0.8rem;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--btn-border);
+    background: #ffffff;
+    color: var(--text-primary);
+    resize: vertical;
+    margin-bottom: 12px;
+}
+
+.app-dialog-input:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+}
+
+.app-dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
 }

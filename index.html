@@ -167,7 +167,7 @@
             <h3 class="help-flat-heading">【記録画面・上部のボタン】</h3>
             <div class="help-flat-item"><strong>ホーム</strong>: ホーム画面に戻る</div>
             <div class="help-flat-item"><strong>自 / 相 の − +</strong>: 点数を手動で増減する。設定した点数・差に届くと終了の確認が出る</div>
-            <div class="help-flat-item"><strong>丸いボタン（①②③…）</strong>: そのセットの記録を見る。自分が取ったセットは青、相手が取ったセットはオレンジ</div>
+            <div class="help-flat-item"><strong>丸いボタン（①②③…）</strong>: そのセットの記録を見る。自分が取ったセットは青、相手が取ったセットはオレンジ。押すとそのセットのメモも入力できる（メモがあると赤い点が付く）</div>
             <div class="help-flat-item"><strong>1st / 2nd</strong>: サーブが何本目かを表示</div>
             <div class="help-flat-item"><strong>戻す</strong>: 直前の操作を取り消す（さかのぼれるのは15回前まで）</div>
             <div class="help-flat-item"><strong>R</strong>: 点数と記録を0に戻す（選手登録・背番号・試合の情報は残る）</div>
@@ -230,6 +230,19 @@
             <div class="sub-modal-title">交代する選手を選択</div>
             <div id="sub-modal-list"></div>
             <button class="action-btn-mini" onclick="closeSubPicker()">キャンセル</button>
+        </div>
+    </div>
+
+    <!-- 記録画面用の確認・通知・メモ入力ダイアログ（記録画面の向きに合わせて表示するため、標準のconfirm/alertは使わない） -->
+    <div class="sub-modal-overlay" id="app-dialog-overlay" style="display: none;">
+        <div class="sub-modal">
+            <div class="sub-modal-title" id="app-dialog-title"></div>
+            <div class="app-dialog-message" id="app-dialog-message"></div>
+            <textarea class="app-dialog-input" id="app-dialog-input" rows="3" placeholder="メモを入力"></textarea>
+            <div class="app-dialog-buttons">
+                <button class="action-btn-mini" id="app-dialog-cancel-btn" onclick="resolveAppDialog(null)">キャンセル</button>
+                <button class="action-btn-mini primary" id="app-dialog-ok-btn" onclick="resolveAppDialog(true)">OK</button>
+            </div>
         </div>
     </div>
 

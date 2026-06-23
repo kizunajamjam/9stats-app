@@ -76,6 +76,46 @@ function updateUndoButtonState() {
     if (btn) btn.disabled = undoStack.length === 0;
 }
 
+// --- 記録画面用の確認・通知・メモ入力ダイアログ ---
+// 標準のconfirm/alert/promptは画面の向き（横向き固定）に合わせて回転しないため、
+// 記録画面用の操作にはこの自作ダイアログを使う。Promiseで結果を返す。
+
+let appDialogResolve = null;
+
+function showAppDialog({ title = "", message = "", showInput = false, defaultValue = "", showCancel = true, okText = "OK", cancelText = "キャンセル" }) {
+    return new Promise(resolve => {
+        appDialogResolve = resolve;
+        document.getElementById("app-dialog-title").textContent = title;
+        document.getElementById("app-dialog-message").textContent = message;
+
+        const input = document.getElementById("app-dialog-input");
+        input.style.display = showInput ? "block" : "none";
+        input.value = defaultValue;
+
+        document.getElementById("app-dialog-cancel-btn").style.display = showCancel ? "inline-block" : "none";
+        document.getElementById("app-dialog-cancel-btn").textContent = cancelText;
+        document.getElementById("app-dialog-ok-btn").textContent = okText;
+
+        document.getElementById("app-dialog-overlay").style.display = "flex";
+        if (showInput) input.focus();
+    });
+}
+
+// ダイアログのOK/キャンセルボタンから呼ばれる。confirmedがfalsyならnullを返す
+function resolveAppDialog(confirmed) {
+    document.getElementById("app-dialog-overlay").style.display = "none";
+    const resolve = appDialogResolve;
+    appDialogResolve = null;
+    if (!resolve) return;
+
+    if (!confirmed) {
+        resolve(null);
+        return;
+    }
+    const input = document.getElementById("app-dialog-input");
+    resolve(input.style.display === "none" ? true : input.value);
+}
+
 // --- 画面遷移（ホーム / 記録 / 設定 / 実績） ---
 
 const SCREEN_IDS = ["home-screen", "record-screen", "settings-screen", "history-screen", "help-screen"];
@@ -253,6 +293,7 @@ function getRosterMember(id) {
 }
 
 // セット切り替えタブの描画（ヘッダーにコンパクト表示。自チーム取得=青 / 相手取得=橙 / 進行中=灰）
+// メモが入っているセットには右上に小さい点を付ける
 function renderSetTabs() {
     const tabsEl = document.getElementById("set-tabs");
     if (!tabsEl) return;
@@ -261,15 +302,27 @@ function renderSetTabs() {
         let winClass = "";
         if (set.winner === "home") winClass = " won-home";
         else if (set.winner === "away") winClass = " won-away";
-        return `<button class="set-tab-btn${isActive ? " active" : ""}${winClass}" onclick="switchViewingSet(${idx})">${idx + 1}</button>`;
+        const noteDot = set.note ? `<span class="set-tab-note-dot"></span>` : "";
+        return `<button class="set-tab-btn${isActive ? " active" : ""}${winClass}" onclick="switchViewingSet(${idx})">${idx + 1}${noteDot}</button>`;
     }).join("");
 }
 
-// 表示中のセットを切り替える（記録中セット以外は閲覧専用）
-function switchViewingSet(idx) {
+// 表示中のセットを切り替え、そのセットのメモを入力・編集するダイアログを開く
+async function switchViewingSet(idx) {
     if (idx < 0 || idx >= state.sets.length) return;
     state.viewingSetIndex = idx;
     renderPlayers();
+
+    const note = await showAppDialog({
+        title: `セット${idx + 1}のメモ`,
+        showInput: true,
+        defaultValue: state.sets[idx].note || ""
+    });
+    if (note === null) return;
+
+    state.sets[idx].note = note;
+    saveState();
+    renderSetTabs();
 }
 
 // スタッツ記録セル12列分のHTMLを生成（記録中セットならボタン、それ以外なら閲覧専用表示）
@@ -467,39 +520,55 @@ function manualAdjustScore(side, amount) {
 function adjustScore(side, amount) {
     state.scores[side] = Math.max(0, state.scores[side] + amount);
 
+    updateScoreUI();
+    resetServeState();
+    renderPlayers();
+    saveState();
+
     // セット進行管理（設定画面で指定したセット点数・デュース差を使用）
     const other = side === 'home' ? 'away' : 'home';
     const leadScore = state.scores[side];
     const otherScore = state.scores[other];
     if (leadScore >= state.rules.targetScore && leadScore - otherScore >= state.rules.deuceMargin) {
-        const confirmed = confirm(`セット${state.currentSetIndex + 1}を終了しますか？（自:${state.scores.home} 相:${state.scores.away}）`);
-        if (confirmed) {
-            if (side === 'home') {
-                state.scores.setsHome += 1;
-            } else {
-                state.scores.setsAway += 1;
-            }
-            state.scores.home = 0;
-            state.scores.away = 0;
-
-            // 終了したセットに勝者とその時点のラインアップを記録し、新しいセットの記録を開始する
-            state.sets[state.currentSetIndex].winner = side;
-            state.sets[state.currentSetIndex].lineup = JSON.parse(JSON.stringify(state.lineup));
-            state.sets.push({ stats: {} });
-            state.currentSetIndex += 1;
-            state.viewingSetIndex = state.currentSetIndex;
-
-            // 先取セット数に達したら試合終了を通知する（保存・リセットは「終了」ボタンで行う）
-            if (state.scores.setsHome >= state.rules.setsToWin || state.scores.setsAway >= state.rules.setsToWin) {
-                alert(`試合終了です！（セット ${state.scores.setsHome}-${state.scores.setsAway}）\n「終了」ボタンで記録を保存してください。`);
-            }
-        }
+        confirmSetEnd(side);
     }
+}
+
+// セット終了の確認ダイアログを表示し、確定したらセットを終了して次のセットの記録を始める
+async function confirmSetEnd(side) {
+    const confirmed = await showAppDialog({
+        title: `セット${state.currentSetIndex + 1}を終了しますか？`,
+        message: `自:${state.scores.home} 相:${state.scores.away}`
+    });
+    if (!confirmed) return;
+
+    if (side === 'home') {
+        state.scores.setsHome += 1;
+    } else {
+        state.scores.setsAway += 1;
+    }
+    state.scores.home = 0;
+    state.scores.away = 0;
+
+    // 終了したセットに勝者とその時点のラインアップを記録し、新しいセットの記録を開始する
+    state.sets[state.currentSetIndex].winner = side;
+    state.sets[state.currentSetIndex].lineup = JSON.parse(JSON.stringify(state.lineup));
+    state.sets.push({ stats: {} });
+    state.currentSetIndex += 1;
+    state.viewingSetIndex = state.currentSetIndex;
 
     updateScoreUI();
-    resetServeState();
     renderPlayers();
     saveState();
+
+    // 先取セット数に達したら試合終了を通知する（保存・リセットは「終了」ボタンで行う）
+    if (state.scores.setsHome >= state.rules.setsToWin || state.scores.setsAway >= state.rules.setsToWin) {
+        await showAppDialog({
+            title: "試合終了です！",
+            message: `セット ${state.scores.setsHome}-${state.scores.setsAway}\n「終了」ボタンで記録を保存してください。`,
+            showCancel: false
+        });
+    }
 }
 
 // サーブ状態表示更新
@@ -639,21 +708,28 @@ function resetScoresAndStats() {
 }
 
 // マッチリセット（選手登録・背番号・試合情報は保持し、スコアとスタッツのみ初期化）
-function resetMatch() {
-    if (confirm("スコアとスタッツをリセットしますか？（選手登録・背番号・試合情報は保持されます）")) {
-        pushUndoSnapshot();
-        resetScoresAndStats();
+async function resetMatch() {
+    const confirmed = await showAppDialog({
+        title: "リセットしますか？",
+        message: "スコアとスタッツをリセットします。選手登録・背番号・試合情報は保持されます。"
+    });
+    if (!confirmed) return;
 
-        saveState();
-        updateScoreUI();
-        renderPlayers();
-        updateServeIndicator();
-    }
+    pushUndoSnapshot();
+    resetScoresAndStats();
+
+    saveState();
+    updateScoreUI();
+    renderPlayers();
+    updateServeIndicator();
 }
 
 // 試合終了（現在の記録を履歴に保存してから、次の試合のためにスコア・スタッツをリセットする）
-function endMatch() {
-    const confirmed = confirm(`試合を終了して記録を保存しますか？（セット ${state.scores.setsHome}-${state.scores.setsAway}）`);
+async function endMatch() {
+    const confirmed = await showAppDialog({
+        title: "試合を終了しますか？",
+        message: `記録を保存します（セット ${state.scores.setsHome}-${state.scores.setsAway}）`
+    });
     if (!confirmed) return;
 
     saveMatchSnapshotToHistory();
