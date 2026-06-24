@@ -312,12 +312,16 @@ function renderSetTabs() {
     }).join("");
 }
 
-// 表示中のセットを切り替え、そのセットのメモを入力・編集するダイアログを開く
-async function switchViewingSet(idx) {
+// 表示中のセットを切り替える（メモ入力は別の「メモ」ボタンで行う。挙動が重なって分かりにくいのを避けるため）
+function switchViewingSet(idx) {
     if (idx < 0 || idx >= state.sets.length) return;
     state.viewingSetIndex = idx;
     renderPlayers();
+}
 
+// 今表示中のセットのメモを入力・編集するダイアログを開く（ヘッダーの「メモ」ボタンから呼ばれる）
+async function openMemoForViewingSet() {
+    const idx = state.viewingSetIndex;
     const note = await showAppDialog({
         title: `セット${idx + 1}のメモ`,
         showInput: true,
