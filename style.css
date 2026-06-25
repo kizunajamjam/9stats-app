@@ -175,6 +175,8 @@ body {
     background: #ffffff;
     border: 1px solid var(--card-border);
     border-radius: 8px;
+    display: flex;
+    flex-direction: column;
 }
 
 /* セット切り替え兼結果表示（ヘッダーにコンパクト配置）。タップで表示セット切り替え＋メモ入力ができる */
@@ -252,6 +254,7 @@ body {
     top: 0;
     background: #ffffff;
     z-index: 10;
+    flex-shrink: 0; /* ヘッダーは縮めず、残りを選手リストが使う */
 }
 
 .stats-table-header > div {
@@ -280,6 +283,8 @@ body {
 .players-list {
     display: flex;
     flex-direction: column;
+    flex: 1;
+    min-height: 0; /* ヘッダーを除いた残り領域に12行を収める */
 }
 
 /* 選手行 */
@@ -287,9 +292,9 @@ body {
     align-items: center;
     background: var(--card-bg);
     border-bottom: 1px solid var(--card-border);
-    padding: 2px 4px;
-    height: calc((90 * var(--vh) - 42px) / 9); /* 記録エリアからヘッダー分（2行表示で少し高くなった分）を引いた高さを9等分 */
-    min-height: 34px;
+    padding: 1px 4px;
+    flex: 1 1 0; /* ヘッダーを除いた残り領域を12行で等分（場面表示の12人分が必ず画面に収まる） */
+    min-height: 0;
     box-sizing: border-box;
 }
 
@@ -350,8 +355,8 @@ body {
 /* スタッツ記録ボタン（各列1個ずつ、グリッドセルに直接配置） */
 .cell-btn {
     width: 100%;
-    height: 90%;
-    min-height: 24px;
+    height: 100%;
+    min-height: 0; /* 行の高さに追従させ、12行表示でもはみ出さない */
     border-radius: 4px;
     border: 1px solid var(--btn-border);
     background: var(--btn-bg);

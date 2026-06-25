@@ -10,7 +10,7 @@ const state = {
     },
     isSecondServe: false, // サーブ試行回数フラグ (9人制ルール)
     roster: [],   // 登録選手（最大20名）: {id, number, name}
-    lineup: [],   // 出場中9スロット分のroster idを格納する配列
+    lineup: [],   // 場面表示する12スロット分のroster idを格納する配列（9人制ルールは維持しつつ表示枠は12人分）
     nextId: 0,    // 選手登録用の連番ID
     matchInfo: { date: "", venue: "", teamName: "", opponent: "" }, // 試合情報（日時・会場・チーム名）
     rules: { targetScore: 21, deuceMargin: 2, setsToWin: 2 }, // セットルール（点数・デュース差・試合に必要な先取セット数）
@@ -21,12 +21,13 @@ const state = {
 };
 
 const MAX_ROSTER_SIZE = 20;
-const LINEUP_SIZE = 9;
+// 9人制ルール（サーブ2本制など）は維持したまま、場面表示の枠は12人分にする
+const LINEUP_SIZE = 12;
 
 // 初期データ設定
 const defaultPlayerNames = [
-    "選手 1", "選手 2", "選手 3", "選手 4", "選手 5",
-    "選手 6", "選手 7", "選手 8", "選手 9"
+    "選手 1", "選手 2", "選手 3", "選手 4", "選手 5", "選手 6",
+    "選手 7", "選手 8", "選手 9", "選手 10", "選手 11", "選手 12"
 ];
 
 const STORAGE_KEY = "9stats_match_state";
@@ -356,7 +357,7 @@ function buildStatCellsHtml(playerId, stats, isLive) {
     ).join("");
 }
 
-// 選手リストの描画（出場中の9スロット分。表示中セットが記録中セットなら編集可、過去セットなら閲覧専用）
+// 選手リストの描画（場面表示の12スロット分。表示中セットが記録中セットなら編集可、過去セットなら閲覧専用）
 function renderPlayers() {
     renderSetTabs();
 
