@@ -13,9 +13,10 @@
     --accent-purple: #8b5cf6;
     --btn-bg: #ffffff;
     --btn-border: #e2e8f0;
-    /* 横向きレイアウト計算用の単位。縦持ち時は回転に合わせて入れ替える */
-    --vh: 1vh;
-    --vw: 1vw;
+    /* レイアウト計算用の単位。JSが実際の表示領域(--real-vh/--real-vw)を測って入れ、
+       未実行時は素のvh/vwにフォールバックする。縦持ち時は回転に合わせて入れ替える */
+    --vh: var(--real-vh, 1vh);
+    --vw: var(--real-vw, 1vw);
 }
 
 * {
@@ -45,8 +46,8 @@ body {
 @media screen and (orientation: portrait) {
     html.force-landscape {
         /* 回転後は実際のvhとvwの役割が入れ替わるため、レイアウト計算用の単位を入れ替える */
-        --vh: 1vw;
-        --vw: 1vh;
+        --vh: var(--real-vw, 1vw);
+        --vw: var(--real-vh, 1vh);
         transform: rotate(90deg);
         transform-origin: left top;
         width: 100vh;

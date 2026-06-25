@@ -122,6 +122,15 @@ function resolveAppDialog(confirmed) {
     resolve(input.style.display === "none" ? true : input.value);
 }
 
+// --- 実際の表示領域を測ってレイアウト単位に反映する ---
+// モバイルブラウザのvh/vwはURLバー分ずれて実際の見える領域と一致しないため、
+// window.innerHeight/innerWidthから1%分のpx値を求めて全画面のレイアウト計算に使う。
+function updateViewportUnits() {
+    const root = document.documentElement;
+    root.style.setProperty("--real-vh", (window.innerHeight / 100) + "px");
+    root.style.setProperty("--real-vw", (window.innerWidth / 100) + "px");
+}
+
 // --- 画面遷移（ホーム / 記録 / 設定 / 実績） ---
 
 const SCREEN_IDS = ["home-screen", "record-screen", "settings-screen", "history-screen", "help-screen"];
@@ -1049,7 +1058,12 @@ function renderHistoryDetailBody(match) {
 
 // 初期化実行
 window.onload = function () {
+    updateViewportUnits();
     startMatch();
     updateUndoButtonState();
     goHome();
 };
+
+// 画面の回転・リサイズ（URLバーの開閉含む）に追従してレイアウト単位を更新する
+window.addEventListener("resize", updateViewportUnits);
+window.addEventListener("orientationchange", updateViewportUnits);
