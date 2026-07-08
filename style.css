@@ -93,7 +93,8 @@ body {
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    gap: 36px;
+    /* 固定36pxだと狭い端末でヘッダーが溢れて右端のボタンが切れて押せなくなるため、画面幅に応じて詰める */
+    gap: clamp(8px, calc(3 * var(--vw)), 36px);
     width: 100%;
 }
 
@@ -145,7 +146,7 @@ body {
 .header-actions-mini {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: clamp(6px, calc(1.5 * var(--vw)), 14px);
     margin-left: auto;
 }
 
@@ -184,7 +185,11 @@ body {
 .set-tabs-mini {
     display: flex;
     gap: 8px;
-    flex-shrink: 0;
+    /* セット数が増えて狭い端末で収まらないときは折り返して全タブを押せるようにする */
+    flex-wrap: wrap;
+    align-content: center;
+    flex-shrink: 1;
+    min-width: 26px;
 }
 
 .set-tab-btn {
@@ -204,6 +209,13 @@ body {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+}
+
+/* 見た目はそのまま、タップの当たり判定だけを広げる（18pxの円は指では外しやすいため） */
+.set-tab-btn::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
 }
 
 /* メモが入っているセットの目印 */
@@ -720,6 +732,13 @@ body {
     margin-bottom: 10px;
 }
 
+/* 合計／セット切り替えは指で押すボタンなので、当たりやすい大きさにする */
+.history-detail-tabs .action-btn-mini {
+    font-size: 0.7rem;
+    padding: 8px 12px;
+    min-height: 34px;
+}
+
 .history-detail-note {
     font-size: 0.75rem;
     color: var(--text-primary);
@@ -730,6 +749,13 @@ body {
     margin-bottom: 10px;
     max-width: 460px;
     white-space: pre-wrap;
+}
+
+/* テーブルがはみ出しても画面全体が横パンしないよう、テーブルだけを横スクロールさせる
+   （画面全体が横に流れるとタブが画面外に出てしまい、セット切り替えが押せなくなる） */
+.history-detail-table-wrap {
+    overflow-x: auto;
+    max-width: 100%;
 }
 
 .history-detail-table-wrap table {
@@ -777,6 +803,18 @@ body {
     font-weight: 700;
     font-size: 0.85rem;
     margin-bottom: 10px;
+}
+
+/* 交代・並び替えモーダルの区切り見出し */
+.sub-modal-section-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin: 12px 0 6px;
+}
+
+.sub-modal-section-title:first-child {
+    margin-top: 0;
 }
 
 .sub-modal-item {

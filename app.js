@@ -492,20 +492,33 @@ function addRosterPlayer() {
     renderRoster();
 }
 
-// --- 選手交代（出場スロットの入れ替え） ---
+// --- 選手交代・並び替え（出場スロットの入れ替え） ---
 
-// 交代候補（ベンチ）選手を選ぶ画面を開く
+// 背番号ボタンから開くモーダル。ベンチとの交代と、表示順の並び替え（行の場所の入れ替え）の両方を行う
 function openSubPicker(slotIndex) {
     const benchPlayers = state.roster.filter(p => !state.lineup.includes(p.id));
     const listEl = document.getElementById("sub-modal-list");
 
-    if (benchPlayers.length === 0) {
-        listEl.innerHTML = `<div class="history-empty-msg">交代可能な選手がいません。設定画面で選手を追加してください。</div>`;
-    } else {
-        listEl.innerHTML = benchPlayers.map(p => `
+    const benchHtml = benchPlayers.length === 0
+        ? `<div class="history-empty-msg">交代可能な選手がいません。設定画面で選手を追加してください。</div>`
+        : benchPlayers.map(p => `
             <button class="sub-modal-item" onclick="substitutePlayer(${slotIndex}, ${p.id})">${p.number ? escapeHtml(p.number) + " " : ""}${escapeHtml(p.name)}</button>
         `).join("");
-    }
+
+    // 並び替え：選んだ行と他の行の場所を入れ替える（登録順に縛られず記録画面の並びを変えられる）
+    const swapHtml = state.lineup.map((id, idx) => {
+        if (idx === slotIndex) return "";
+        const p = getRosterMember(id);
+        const label = p ? `${p.number ? escapeHtml(p.number) + " " : ""}${escapeHtml(p.name)}` : "（未設定）";
+        return `<button class="sub-modal-item" onclick="swapLineupSlots(${slotIndex}, ${idx})">${idx + 1}行目：${label}</button>`;
+    }).join("");
+
+    listEl.innerHTML = `
+        <div class="sub-modal-section-title">ベンチと交代</div>
+        ${benchHtml}
+        <div class="sub-modal-section-title">並び替え（選んだ行と場所を入れ替え）</div>
+        ${swapHtml}
+    `;
 
     document.getElementById("sub-modal-overlay").style.display = "flex";
 }
@@ -518,6 +531,15 @@ function closeSubPicker() {
 function substitutePlayer(slotIndex, rosterId) {
     pushUndoSnapshot();
     state.lineup[slotIndex] = rosterId;
+    saveState();
+    renderPlayers();
+    closeSubPicker();
+}
+
+// 2つの出場スロットの場所を入れ替える（スタッツは選手IDに紐づくため並び替えで記録は変わらない）
+function swapLineupSlots(slotA, slotB) {
+    pushUndoSnapshot();
+    [state.lineup[slotA], state.lineup[slotB]] = [state.lineup[slotB], state.lineup[slotA]];
     saveState();
     renderPlayers();
     closeSubPicker();
@@ -949,6 +971,13 @@ function showHistoryDetail(id) {
     document.getElementById("history-list-view").style.display = "none";
     document.getElementById("history-detail-view").style.display = "block";
 
+    renderHistoryDetailSummary(match);
+    renderHistoryDetailTabs(match);
+    renderHistoryDetailBody(match);
+}
+
+// 履歴詳細の試合概要（日時・会場・スコア・最終更新）を描画する
+function renderHistoryDetailSummary(match) {
     const info = match.matchInfo || {};
     document.getElementById("history-detail-summary").innerHTML = `
         <div>日時: ${escapeHtml(info.date || "-")}　会場: ${escapeHtml(info.venue || "-")}</div>
@@ -956,9 +985,6 @@ function showHistoryDetail(id) {
         <div>セット ${match.scores.setsHome}-${match.scores.setsAway}（最終スコア ${match.scores.home}-${match.scores.away}）</div>
         <div class="history-item-updated">最終更新: ${formatDateTime(match.updatedAt)}</div>
     `;
-
-    renderHistoryDetailTabs(match);
-    renderHistoryDetailBody(match);
 }
 
 // 合計／セット別の切り替えタブを描画する（古い形式の保存データ＝match.setsが無い場合はタブを出さず合計のみにする）
@@ -1008,9 +1034,14 @@ function renderHistoryDetailBody(match) {
         note = setRecord.note || "";
     }
 
-    document.getElementById("history-detail-note").innerHTML = note
-        ? `<div class="history-detail-note"><strong>メモ:</strong> ${escapeHtml(note)}</div>`
-        : "";
+    // セット表示中はメモを確定後でも追記・編集できるようにボタンを出す（合計表示・旧形式データは対象外）
+    const noteEl = document.getElementById("history-detail-note");
+    if (hasSets && historyDetailViewIndex >= 0) {
+        const noteHtml = note ? `<div class="history-detail-note"><strong>メモ:</strong> ${escapeHtml(note)}</div>` : "";
+        noteEl.innerHTML = noteHtml + `<button class="action-btn-mini" onclick="editHistoryDetailNote()">${note ? "メモを編集" : "メモを追加"}</button>`;
+    } else {
+        noteEl.innerHTML = "";
+    }
 
     const tableRows = rows.map(player => {
         const serveTotal = player.serve.P + player.serve.M;
@@ -1054,6 +1085,36 @@ function renderHistoryDetailBody(match) {
         const csvContent = buildCSVContent(info, rows);
         downloadCSV(csvContent, `9stats_${info.date || "match"}${suffix}.csv`);
     };
+}
+
+// 履歴詳細で表示中セットのメモを追記・編集する
+async function editHistoryDetailNote() {
+    const history = loadHistory();
+    const match = history.find(m => m.id === historyDetailMatchId);
+    if (!match || !Array.isArray(match.sets)) return;
+    const set = match.sets[historyDetailViewIndex];
+    if (!set) return;
+
+    const note = await showAppDialog({
+        title: `セット${historyDetailViewIndex + 1}のメモ`,
+        showInput: true,
+        defaultValue: set.note || ""
+    });
+    if (note === null) return;
+
+    set.note = note;
+    match.updatedAt = new Date().toISOString();
+    saveHistory(history);
+
+    // 記録中の試合を編集した場合は、次の保存で履歴側の編集が消えないよう記録中データにも反映する
+    if (state.historyId === match.id && state.sets[historyDetailViewIndex]) {
+        state.sets[historyDetailViewIndex].note = note;
+        saveState();
+        renderSetTabs();
+    }
+
+    renderHistoryDetailSummary(match);
+    renderHistoryDetailBody(match);
 }
 
 // 初期化実行
