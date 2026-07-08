@@ -33,12 +33,23 @@
     display: none;
 }
 
+/* 画面の端で引っ張ったときのゴムのような余計なスクロール（オーバースクロール）を無効にする */
+html, body {
+    overscroll-behavior: none;
+}
+
 body {
     font-family: 'Outfit', 'Noto Sans JP', sans-serif;
     background: var(--bg-gradient);
     color: var(--text-primary);
     height: calc(100 * var(--vh));
     overflow: hidden; /* 画面全体のスクロールを防ぐ */
+    /* iOS Safariはoverflow:hiddenだけではタッチ操作で画面全体がずれるため、bodyを固定する。
+       スクロールが必要な画面（設定・実績・使い方）は内側の.settings-bodyがスクロールを担当する */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: calc(100 * var(--vw));
     touch-action: manipulation;
 }
 
@@ -516,6 +527,8 @@ body {
     flex: 1;
     overflow-y: auto;
     padding-top: 10px;
+    /* 内側のスクロールが端に達しても画面全体へスクロールが伝わらないようにする */
+    overscroll-behavior: contain;
 }
 
 .settings-grid {
@@ -666,6 +679,14 @@ body {
     margin-top: 12px;
 }
 
+/* バックアップの保存・読み込みボタン行 */
+.history-backup-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
 .history-empty-msg {
     font-size: 0.75rem;
     color: var(--text-secondary);
@@ -737,6 +758,14 @@ body {
     font-size: 0.7rem;
     padding: 8px 12px;
     min-height: 34px;
+}
+
+/* セット別表示のときにそのセットの最終スコアを示す行 */
+.history-detail-set-score {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
 }
 
 .history-detail-note {

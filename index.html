@@ -140,6 +140,11 @@
         </div>
         <div class="settings-body">
             <div id="history-list-view">
+                <div class="history-backup-row">
+                    <button class="action-btn-mini" onclick="exportHistoryBackup()">バックアップを保存</button>
+                    <button class="action-btn-mini" onclick="document.getElementById('backup-file-input').click()">バックアップを読み込み</button>
+                    <input type="file" id="backup-file-input" accept=".json,application/json" style="display: none;" onchange="importHistoryBackup(this)">
+                </div>
                 <div id="history-list"></div>
             </div>
 
@@ -221,9 +226,12 @@
             <div class="help-flat-item"><strong>詳細</strong>: 試合をタップすると選手ごとの記録を見られる。「合計」と「セット1」「セット2」…のボタンで、試合全体とセットごとの記録を切り替えられる。セットにメモがあればそこに表示される</div>
             <div class="help-flat-item"><strong>CSV</strong>: 表計算ソフトで開けるファイルとして保存する</div>
             <div class="help-flat-item"><strong>削除</strong>: その試合の記録を消す（元に戻せない）</div>
+            <div class="help-flat-item"><strong>バックアップを保存</strong>: 実績全体を1つのファイルとして端末に保存する（iPhoneは「ファイル」アプリ、Androidは「ダウンロード」に入る）</div>
+            <div class="help-flat-item"><strong>バックアップを読み込み</strong>: 保存したバックアップファイルを選んで実績を復元する。今ある実績は消えず、足りない試合だけ追加される</div>
 
             <h3 class="help-flat-heading">【記録が消えないようにするには】</h3>
             <div class="help-flat-item">記録中の試合は、ボタンを押すたびに自動でこの端末に保存される</div>
+            <div class="help-flat-item">実績はブラウザのデータ削除で消えることがあるため、大事な試合の後は「バックアップを保存」でファイルに残しておくと安心。端末の買い替え時もこのファイルで引き継げる</div>
             <div class="help-flat-item">記録画面は、スマホを縦に持っていても自動で横向きの表示になる（他の画面は縦のまま操作できる）</div>
         </div>
     </div>

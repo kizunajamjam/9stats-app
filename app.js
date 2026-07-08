@@ -583,6 +583,14 @@ async function confirmSetEnd(side) {
     });
     if (!confirmed) return;
 
+    // 終了したセットに勝者・そのセットの最終スコア・その時点のラインアップを記録する
+    // （スコアはこの直後に0へリセットするため、リセット前にセット側へ写しておく）
+    const endedSet = state.sets[state.currentSetIndex];
+    endedSet.winner = side;
+    endedSet.scoreHome = state.scores.home;
+    endedSet.scoreAway = state.scores.away;
+    endedSet.lineup = JSON.parse(JSON.stringify(state.lineup));
+
     if (side === 'home') {
         state.scores.setsHome += 1;
     } else {
@@ -591,9 +599,7 @@ async function confirmSetEnd(side) {
     state.scores.home = 0;
     state.scores.away = 0;
 
-    // 終了したセットに勝者とその時点のラインアップを記録し、新しいセットの記録を開始する
-    state.sets[state.currentSetIndex].winner = side;
-    state.sets[state.currentSetIndex].lineup = JSON.parse(JSON.stringify(state.lineup));
+    // 新しいセットの記録を開始する
     state.sets.push({ stats: {} });
     state.currentSetIndex += 1;
     state.viewingSetIndex = state.currentSetIndex;
@@ -892,6 +898,15 @@ function saveMatchSnapshotToHistory() {
         sets: JSON.parse(JSON.stringify(state.sets))
     };
 
+    // セット終了直後に自動で追加された、まだ何も記録していない進行中セットは履歴に含めない
+    // （残すと実績に中身が空の「セットN」タブが表示されてしまう）
+    const lastSet = snapshot.sets[snapshot.sets.length - 1];
+    if (snapshot.sets.length > 1 && !lastSet.winner && !lastSet.note
+        && Object.keys(lastSet.stats).length === 0
+        && state.scores.home === 0 && state.scores.away === 0) {
+        snapshot.sets.pop();
+    }
+
     const existingIndex = state.historyId !== null ? history.findIndex(m => m.id === state.historyId) : -1;
     if (existingIndex !== -1) {
         history[existingIndex] = { id: state.historyId, ...snapshot };
@@ -904,11 +919,126 @@ function saveMatchSnapshotToHistory() {
     saveState();
 }
 
+// セットごとの最終スコア表示を組み立てる（例:「（21-15 / 18-21）」）
+// セット途中で保存した試合は進行中セットのスコアも末尾に含める。
+// セット別スコアを持たない旧形式データでは空文字を返す（誤解を招く「最終 0-0」は出さない）
+function formatMatchScoreSummary(match) {
+    const setScores = (match.sets || [])
+        .filter(s => typeof s.scoreHome === "number" && typeof s.scoreAway === "number")
+        .map(s => `${s.scoreHome}-${s.scoreAway}`);
+    if (match.scores.home > 0 || match.scores.away > 0) {
+        setScores.push(`${match.scores.home}-${match.scores.away}`);
+    }
+    return setScores.length > 0 ? `（${setScores.join(" / ")}）` : "";
+}
+
 // 保存日時の表示用フォーマット（未保存・不正な値は"-"を返す）
 function formatDateTime(isoStr) {
     const d = new Date(isoStr);
     if (!isoStr || isNaN(d.getTime())) return "-";
     return d.toLocaleString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+// --- 実績のバックアップ（エクスポート/インポート） ---
+// localStorageはブラウザのデータ削除やiOSの自動削除で消えるため、
+// 実績全体を端末のファイルとして保存し、後で読み戻せるようにする。
+
+// バックアップファイルの中身を組み立てる（テストと出力処理から共通で使う）
+function buildHistoryBackupPayload() {
+    return {
+        app: "9stats",
+        type: "history-backup",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        history: loadHistory()
+    };
+}
+
+// 実績全体を1つのJSONファイルとしてダウンロードさせる
+async function exportHistoryBackup() {
+    const payload = buildHistoryBackupPayload();
+    if (payload.history.length === 0) {
+        await showAppDialog({ title: "バックアップ", message: "保存された実績がまだありません。", showCancel: false });
+        return;
+    }
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `9stats_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// バックアップ内の1件が実績レコードとして最低限の形を持っているか
+function isValidHistoryRecord(rec) {
+    return rec !== null && typeof rec === "object"
+        && typeof rec.id === "number"
+        && rec.scores !== null && typeof rec.scores === "object"
+        && rec.matchInfo !== null && typeof rec.matchInfo === "object"
+        && Array.isArray(rec.roster);
+}
+
+// バックアップファイルを読み込んで実績に反映する（ファイル選択inputのonchangeから呼ばれる）
+// 既存の実績は消さずに統合する：無いidは追加、同じidは更新日時が新しい方を残す
+async function importHistoryBackup(inputEl) {
+    const file = inputEl.files && inputEl.files[0];
+    inputEl.value = ""; // 同じファイルをもう一度選んでも再読み込みできるようにする
+    if (!file) return;
+
+    let parsed;
+    try {
+        parsed = JSON.parse(await file.text());
+    } catch (e) {
+        await showAppDialog({ title: "読み込みエラー", message: "ファイルを読み込めませんでした。\n「バックアップを保存」で作ったファイルを選んでください。", showCancel: false });
+        return;
+    }
+
+    // 正式な形式（buildHistoryBackupPayloadの出力）と、実績配列そのままの両方を受け付ける
+    const incoming = Array.isArray(parsed) ? parsed
+        : (parsed && Array.isArray(parsed.history) ? parsed.history : null);
+    const validRecords = incoming ? incoming.filter(isValidHistoryRecord) : [];
+    if (validRecords.length === 0) {
+        await showAppDialog({ title: "読み込みエラー", message: "このファイルに実績データが見つかりませんでした。\n「バックアップを保存」で作ったファイルを選んでください。", showCancel: false });
+        return;
+    }
+
+    // 先に反映内容を数えて、確認してから書き込む
+    const history = loadHistory();
+    const toAdd = [];
+    const toUpdate = [];
+    validRecords.forEach(rec => {
+        const existing = history.find(m => m.id === rec.id);
+        if (!existing) {
+            toAdd.push(rec);
+        } else if (new Date(rec.updatedAt || 0) > new Date(existing.updatedAt || 0)) {
+            toUpdate.push(rec);
+        }
+    });
+
+    if (toAdd.length === 0 && toUpdate.length === 0) {
+        await showAppDialog({ title: "バックアップを読み込み", message: `${validRecords.length}件の実績が見つかりましたが、すべて保存済みでした。\n変更はありません。`, showCancel: false });
+        return;
+    }
+
+    const confirmed = await showAppDialog({
+        title: "バックアップを読み込み",
+        message: `${validRecords.length}件の実績が見つかりました。\n追加 ${toAdd.length}件 / 更新 ${toUpdate.length}件を反映します。\n（今ある実績は消えません）`
+    });
+    if (!confirmed) return;
+
+    toAdd.forEach(rec => history.push(rec));
+    toUpdate.forEach(rec => {
+        history[history.findIndex(m => m.id === rec.id)] = rec;
+    });
+    history.sort((a, b) => b.id - a.id); // 新しい試合が上に来る並びを保つ
+
+    saveHistory(history);
+    renderHistoryList();
+    await showAppDialog({ title: "バックアップを読み込み", message: `読み込みが完了しました。\n追加 ${toAdd.length}件 / 更新 ${toUpdate.length}件`, showCancel: false });
 }
 
 // 履歴の削除
@@ -947,7 +1077,7 @@ function renderHistoryList() {
         item.innerHTML = `
             <div class="history-item-info" onclick="showHistoryDetail(${match.id})">
                 <div class="history-item-title">${escapeHtml(info.date || "")} ${teamLabel} ${opponentLabel}</div>
-                <div>セット ${match.scores.setsHome}-${match.scores.setsAway}（最終 ${match.scores.home}-${match.scores.away}）${info.venue ? " / " + escapeHtml(info.venue) : ""}</div>
+                <div>セット ${match.scores.setsHome}-${match.scores.setsAway}${formatMatchScoreSummary(match)}${info.venue ? " / " + escapeHtml(info.venue) : ""}</div>
                 <div class="history-item-updated">最終更新: ${formatDateTime(match.updatedAt)}</div>
             </div>
             <button class="history-item-delete" onclick="deleteHistoryMatch(${match.id})">削除</button>
@@ -982,7 +1112,7 @@ function renderHistoryDetailSummary(match) {
     document.getElementById("history-detail-summary").innerHTML = `
         <div>日時: ${escapeHtml(info.date || "-")}　会場: ${escapeHtml(info.venue || "-")}</div>
         <div>${escapeHtml(info.teamName || "自チーム")} vs ${escapeHtml(info.opponent || "対戦相手未設定")}</div>
-        <div>セット ${match.scores.setsHome}-${match.scores.setsAway}（最終スコア ${match.scores.home}-${match.scores.away}）</div>
+        <div>セット ${match.scores.setsHome}-${match.scores.setsAway}${formatMatchScoreSummary(match)}</div>
         <div class="history-item-updated">最終更新: ${formatDateTime(match.updatedAt)}</div>
     `;
 }
@@ -1018,6 +1148,7 @@ function renderHistoryDetailBody(match) {
     const roster = match.roster || [];
     let rows;
     let note = "";
+    let setScoreHtml = "";
 
     if (!hasSets) {
         // 古い形式の保存データ：roster自体に通算スタッツが入っている
@@ -1032,13 +1163,16 @@ function renderHistoryDetailBody(match) {
             ...(setRecord.stats[player.id] || createEmptyStats())
         }));
         note = setRecord.note || "";
+        if (typeof setRecord.scoreHome === "number" && typeof setRecord.scoreAway === "number") {
+            setScoreHtml = `<div class="history-detail-set-score">セット${historyDetailViewIndex + 1}スコア: ${setRecord.scoreHome}-${setRecord.scoreAway}</div>`;
+        }
     }
 
     // セット表示中はメモを確定後でも追記・編集できるようにボタンを出す（合計表示・旧形式データは対象外）
     const noteEl = document.getElementById("history-detail-note");
     if (hasSets && historyDetailViewIndex >= 0) {
         const noteHtml = note ? `<div class="history-detail-note"><strong>メモ:</strong> ${escapeHtml(note)}</div>` : "";
-        noteEl.innerHTML = noteHtml + `<button class="action-btn-mini" onclick="editHistoryDetailNote()">${note ? "メモを編集" : "メモを追加"}</button>`;
+        noteEl.innerHTML = setScoreHtml + noteHtml + `<button class="action-btn-mini" onclick="editHistoryDetailNote()">${note ? "メモを編集" : "メモを追加"}</button>`;
     } else {
         noteEl.innerHTML = "";
     }
