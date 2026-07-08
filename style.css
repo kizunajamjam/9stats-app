@@ -866,6 +866,14 @@ body {
 }
 
 /* 記録画面用の確認・通知・メモ入力ダイアログ（標準のconfirm/alertは画面の向きに合わせて回転しないため使わない） */
+
+/* 文字入力ダイアログ（メモ）は中央でなく画面上部に寄せる。
+   中央配置だとソフトウェアキーボードにOK/キャンセルボタンが隠れて押せなくなることがある */
+#app-dialog-overlay.portrait-mode {
+    align-items: flex-start;
+    padding-top: 10vh;
+}
+
 .app-dialog-message {
     font-size: 0.8rem;
     color: var(--text-primary);

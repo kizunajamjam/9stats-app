@@ -102,13 +102,21 @@ function showAppDialog({ title = "", message = "", showInput = false, defaultVal
         // ダイアログ自体だけを縦向きに見えるよう逆回転させる（ソフトウェアキーボードの向きと合わせるため）
         overlay.classList.toggle("portrait-mode", showInput);
         overlay.style.display = "flex";
-        if (showInput) input.focus();
+        // preventScroll: フォーカス時にブラウザが画面をスクロールさせて表示がずれるのを防ぐ
+        if (showInput) input.focus({ preventScroll: true });
     });
 }
 
 // ダイアログのOK/キャンセルボタンから呼ばれる。confirmedがfalsyならnullを返す
 function resolveAppDialog(confirmed) {
     document.getElementById("app-dialog-overlay").style.display = "none";
+
+    const input = document.getElementById("app-dialog-input");
+    // ソフトウェアキーボードを確実に閉じ、キーボードでずれた表示位置を元に戻す
+    // （メモ入力後に画面がずれたままになり、ボタンが押せなくなる症状への対策）
+    input.blur();
+    window.scrollTo(0, 0);
+    updateViewportUnits();
 
     const resolve = appDialogResolve;
     appDialogResolve = null;
@@ -118,7 +126,6 @@ function resolveAppDialog(confirmed) {
         resolve(null);
         return;
     }
-    const input = document.getElementById("app-dialog-input");
     resolve(input.style.display === "none" ? true : input.value);
 }
 
