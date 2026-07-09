@@ -46,7 +46,9 @@ function pushUndoSnapshot() {
         sets: state.sets,
         currentSetIndex: state.currentSetIndex,
         viewingSetIndex: state.viewingSetIndex,
-        lineup: state.lineup
+        lineup: state.lineup,
+        // 実績レコードとの紐付けも戻せるようにする（終了→戻す→再終了で実績が2重登録されるのを防ぐ）
+        historyId: state.historyId
     }));
     if (undoStack.length > UNDO_LIMIT) undoStack.shift();
     updateUndoButtonState();
@@ -63,6 +65,7 @@ function undoLastAction() {
     state.currentSetIndex = snapshot.currentSetIndex;
     state.viewingSetIndex = snapshot.viewingSetIndex;
     state.lineup = snapshot.lineup;
+    if (snapshot.historyId !== undefined) state.historyId = snapshot.historyId;
 
     saveState();
     updateScoreUI();

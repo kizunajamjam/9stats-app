@@ -93,7 +93,10 @@ body {
 
 /* 最小の1行ヘッダーのスタイリング */
 .app-header {
-    height: calc(8 * var(--vh));
+    /* 高さ固定だと小さい画面でボタンや2段になったセットタブがはみ出すため、内容に応じて伸びられるようにする */
+    height: auto;
+    min-height: calc(8 * var(--vh));
+    flex-shrink: 0;
     border-bottom: 1px solid var(--card-border);
     display: flex;
     align-items: center;
@@ -182,7 +185,10 @@ body {
 /* スタッツ記録エリア */
 .stats-workspace {
     width: 100%;
-    height: calc(90 * var(--vh)); /* ヘッダー以外の全領域を使用 */
+    /* ヘッダーが伸びた分だけ自動で縮み、常に残り全領域を使う */
+    height: auto;
+    flex: 1;
+    min-height: 0;
     overflow: hidden; /* 横スクロール・縦スクロール両方を禁止 */
     margin-bottom: 0px;
     background: #ffffff;
