@@ -1272,3 +1272,9 @@ window.onload = function () {
 // 画面の回転・リサイズ（URLバーの開閉含む）に追従してレイアウト単位を更新する
 window.addEventListener("resize", updateViewportUnits);
 window.addEventListener("orientationchange", updateViewportUnits);
+
+// このアプリはページ自体をスクロールさせない設計（スクロールは各画面の内側の領域が担当する）。
+// iOSではキーボードやURLバーの開閉の拍子にページ全体がずれることがあるため、ずれたら即座に戻す。
+window.addEventListener("scroll", () => {
+    if (window.scrollX !== 0 || window.scrollY !== 0) window.scrollTo(0, 0);
+});
