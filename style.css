@@ -53,35 +53,36 @@ body {
     touch-action: manipulation;
 }
 
-/* 縦持ちでも記録画面だけは画面全体を回転させて強制的に横向き表示にする */
-@media screen and (orientation: portrait) {
-    html.force-landscape {
-        /* 回転後は実際のvhとvwの役割が入れ替わるため、レイアウト計算用の単位を入れ替える */
-        --vh: var(--real-vw, 1vw);
-        --vw: var(--real-vh, 1vh);
-        transform: rotate(90deg);
-        transform-origin: left top;
-        /* vh/vw単位でなくJSが実測した表示サイズを使う。iOSのvhはURLバーを畳んだ状態の
-           大きい高さを指すため、URLバー表示中は画面からはみ出した分がスクロールして
-           ページ全体がずれてしまう（実測サイズなら常に見えている範囲にぴったり収まる） */
-        width: calc(100 * var(--real-vh, 1vh));
-        height: calc(100 * var(--real-vw, 1vw));
-        overflow: hidden;
-        position: absolute;
-        top: 0;
-        left: calc(100 * var(--real-vw, 1vw));
-    }
+/* 縦持ちでも記録画面だけは画面全体を回転させて強制的に横向き表示にする。
+   縦持ちかどうか（.device-portrait）はCSSのorientation判定でなくJSが付与する。
+   Androidはキーボードが開くとビューポートが縮んで縦横比が一瞬「横長」になり、
+   orientation判定だとメモ入力中に回転が解除されてしまうため、物理的な向きで判定する */
+html.force-landscape.device-portrait {
+    /* 回転後は実際のvhとvwの役割が入れ替わるため、レイアウト計算用の単位を入れ替える */
+    --vh: var(--real-vw, 1vw);
+    --vw: var(--real-vh, 1vh);
+    transform: rotate(90deg);
+    transform-origin: left top;
+    /* vh/vw単位でなくJSが実測した表示サイズを使う。iOSのvhはURLバーを畳んだ状態の
+       大きい高さを指すため、URLバー表示中は画面からはみ出した分がスクロールして
+       ページ全体がずれてしまう（実測サイズなら常に見えている範囲にぴったり収まる） */
+    width: calc(100 * var(--real-vh, 1vh));
+    height: calc(100 * var(--real-vw, 1vw));
+    overflow: hidden;
+    position: absolute;
+    top: 0;
+    left: calc(100 * var(--real-vw, 1vw));
+}
 
-    /* メモ入力ダイアログだけ、記録画面の回転を打ち消して縦向きに表示する
-       （ソフトウェアキーボードは実際の端末の向きに従うため、入力ダイアログだけ向きを合わせる） */
-    html.force-landscape #app-dialog-overlay.portrait-mode {
-        width: calc(100 * var(--real-vw, 1vw));
-        height: calc(100 * var(--real-vh, 1vh));
-        top: calc(100 * var(--real-vw, 1vw));
-        left: 0;
-        transform: rotate(-90deg);
-        transform-origin: left top;
-    }
+/* メモ入力ダイアログだけ、記録画面の回転を打ち消して縦向きに表示する
+   （ソフトウェアキーボードは実際の端末の向きに従うため、入力ダイアログだけ向きを合わせる） */
+html.force-landscape.device-portrait #app-dialog-overlay.portrait-mode {
+    width: calc(100 * var(--real-vw, 1vw));
+    height: calc(100 * var(--real-vh, 1vh));
+    top: calc(100 * var(--real-vw, 1vw));
+    left: 0;
+    transform: rotate(-90deg);
+    transform-origin: left top;
 }
 
 .app-container {

@@ -135,10 +135,23 @@ function resolveAppDialog(confirmed) {
 // --- 実際の表示領域を測ってレイアウト単位に反映する ---
 // モバイルブラウザのvh/vwはURLバー分ずれて実際の見える領域と一致しないため、
 // window.innerHeight/innerWidthから1%分のpx値を求めて全画面のレイアウト計算に使う。
+
+// 端末を縦に持っているかの判定。
+// タッチ端末では画面の物理的な向き（screen.orientation）で判定する。ウィンドウの縦横比だと、
+// Androidでキーボードが開いてビューポートが低くなった瞬間に「横向き」扱いになり、
+// メモ入力中に記録画面の回転が解除されて崩れるため。非対応環境は縦横比で判定する。
+function isDevicePortrait() {
+    if (matchMedia("(pointer: coarse)").matches && screen.orientation && screen.orientation.type) {
+        return screen.orientation.type.startsWith("portrait");
+    }
+    return window.innerHeight >= window.innerWidth;
+}
+
 function updateViewportUnits() {
     const root = document.documentElement;
     root.style.setProperty("--real-vh", (window.innerHeight / 100) + "px");
     root.style.setProperty("--real-vw", (window.innerWidth / 100) + "px");
+    root.classList.toggle("device-portrait", isDevicePortrait());
 }
 
 // --- 画面遷移（ホーム / 記録 / 設定 / 実績） ---
@@ -1269,9 +1282,18 @@ window.onload = function () {
     goHome();
 };
 
-// 画面の回転・リサイズ（URLバーの開閉含む）に追従してレイアウト単位を更新する
-window.addEventListener("resize", updateViewportUnits);
-window.addEventListener("orientationchange", updateViewportUnits);
+// 画面の回転・リサイズ（URLバーの開閉含む）に追従してレイアウト単位を更新する。
+// Android系は回転直後のイベント時点では古い画面サイズを返す端末があるため、
+// 少し待ってからもう一度測り直してずれを確実に解消する。
+function handleViewportChange() {
+    updateViewportUnits();
+    setTimeout(updateViewportUnits, 250);
+}
+window.addEventListener("resize", handleViewportChange);
+window.addEventListener("orientationchange", handleViewportChange);
+if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", handleViewportChange);
+}
 
 // このアプリはページ自体をスクロールさせない設計（スクロールは各画面の内側の領域が担当する）。
 // iOSではキーボードやURLバーの開閉の拍子にページ全体がずれることがあるため、ずれたら即座に戻す。
