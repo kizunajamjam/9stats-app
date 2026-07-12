@@ -245,7 +245,8 @@ function createEmptyStats() {
         receive: { A: 0, B: 0, C: 0, D: 0 },  // 優 / 良 / 可 / 不可(失点)
         attack: { P: 0, M: 0 },               // スパイクポイント / スパイク失点
         block: { P: 0, M: 0 },                // ブロックポイント / ブロック失点
-        other: { P: 0, M: 0 }                 // その他得点 / その他ミス
+        other: { P: 0, M: 0 },                // その他得点 / その他ミス
+        spike: { att: 0, P: 0, M: 0 }         // スパイク打数 / スパイクポイント / スパイクミス
     };
 }
 
@@ -367,8 +368,10 @@ async function openMemoForViewingSet() {
     renderSetTabs();
 }
 
-// スタッツ記録セル12列分のHTMLを生成（記録中セットならボタン、それ以外なら閲覧専用表示）
+// スタッツ記録セル15列分のHTMLを生成（記録中セットならボタン、それ以外なら閲覧専用表示）
 function buildStatCellsHtml(playerId, stats, isLive) {
+    // spike が無い古いデータへの後方互換
+    const spike = stats.spike || { att: 0, P: 0, M: 0 };
     const cells = [
         { cls: "g-serve point", fn: "recordServe", arg: "'P'", val: stats.serve.P },
         { cls: "g-serve miss", fn: "recordServe", arg: "'M'", val: stats.serve.M },
@@ -381,7 +384,10 @@ function buildStatCellsHtml(playerId, stats, isLive) {
         { cls: "g-block point", fn: "recordBlock", arg: "'P'", val: stats.block.P },
         { cls: "g-block miss", fn: "recordBlock", arg: "'M'", val: stats.block.M },
         { cls: "g-other point", fn: "recordOther", arg: "'P'", val: stats.other.P },
-        { cls: "g-other miss", fn: "recordOther", arg: "'M'", val: stats.other.M }
+        { cls: "g-other miss", fn: "recordOther", arg: "'M'", val: stats.other.M },
+        { cls: "g-spike att", fn: "recordSpike", arg: "'att'", val: spike.att },
+        { cls: "g-spike point", fn: "recordSpike", arg: "'P'", val: spike.P },
+        { cls: "g-spike miss", fn: "recordSpike", arg: "'M'", val: spike.M }
     ];
     return cells.map(c => isLive
         ? `<button class="cell-btn ${c.cls}" onclick="${c.fn}(${playerId}, ${c.arg})"><span class="count">${c.val}</span></button>`
@@ -767,6 +773,27 @@ function recordOther(rosterId, type) {
     saveState();
 }
 
+// スパイク記録（打数カウント / スパイクポイント / スパイクミス）
+function recordSpike(rosterId, type) {
+    const player = getRosterMember(rosterId);
+    if (!player) return;
+    pushUndoSnapshot();
+    const stats = getOrCreateSetStats(state.currentSetIndex, rosterId);
+    if (!stats.spike) stats.spike = { att: 0, P: 0, M: 0 }; // 旧データ互換
+    stats.spike[type] += 1;
+
+    if (type === 'P') {
+        adjustScore('home', 1); // スパイクポイント
+    } else if (type === 'M') {
+        adjustScore('away', 1); // スパイクミス
+    }
+    // att（打数のみ）はスコア変動なし
+
+    resetServeState();
+    renderPlayers();
+    saveState();
+}
+
 // スコア・セットスタッツの初期化処理（リセットと試合終了の両方から共通で使う）
 function resetScoresAndStats() {
     state.scores = { home: 0, away: 0, setsHome: 0, setsAway: 0 };
@@ -835,7 +862,7 @@ function buildCSVContent(matchInfo, players) {
     csvContent += "\n";
 
     // ヘッダー行
-    csvContent += "背番号,選手名,サーブ本数,サーブエース(P),サーブ失点(M),レシーブ優(A),レシーブ良(B),レシーブ可(C),レシーブ不可(D),スパイク決定率(%),スパイク本数,スパイク得点(P),スパイク失点(M),ブロック本数,ブロック得点(P),ブロック失点(M),その他得点(P),その他ミス(M)\n";
+    csvContent += "背番号,選手名,サーブ本数,サーブエース(P),サーブ失点(M),レシーブ優(A),レシーブ良(B),レシーブ可(C),レシーブ不可(D),スパイク決定率(%),スパイク本数,スパイク得点(P),スパイク失点(M),ブロック本数,ブロック得点(P),ブロック失点(M),その他得点(P),その他ミス(M),スパイク打数,スパイクポイント,スパイクミス\n";
 
     // 選手データ
     players.forEach(player => {
@@ -843,6 +870,7 @@ function buildCSVContent(matchInfo, players) {
         const totalAttack = player.attack.P + player.attack.M;
         const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
         const blockTotal = player.block.P + player.block.M;
+        const sp = player.spike || { att: 0, P: 0, M: 0 };
 
         const row = [
             csvField(player.number),
@@ -851,7 +879,8 @@ function buildCSVContent(matchInfo, players) {
             player.receive.A, player.receive.B, player.receive.C, player.receive.D,
             attackRate, totalAttack, player.attack.P, player.attack.M,
             blockTotal, player.block.P, player.block.M,
-            player.other.P, player.other.M
+            player.other.P, player.other.M,
+            sp.att, sp.P, sp.M
         ].join(",");
 
         csvContent += row + "\n";
@@ -903,6 +932,9 @@ function computeTotalsForRoster(roster, sets) {
             total.attack.P += s.attack.P; total.attack.M += s.attack.M;
             total.block.P += s.block.P; total.block.M += s.block.M;
             total.other.P += s.other.P; total.other.M += s.other.M;
+            if (s.spike) {
+                total.spike.att += s.spike.att; total.spike.P += s.spike.P; total.spike.M += s.spike.M;
+            }
         });
         return { number: player.number, name: player.name, ...total };
     });
@@ -1205,6 +1237,7 @@ function renderHistoryDetailBody(match) {
         const totalAttack = player.attack.P + player.attack.M;
         const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
         const blockTotal = player.block.P + player.block.M;
+        const sp = player.spike || { att: 0, P: 0, M: 0 };
         return `
             <tr>
                 <td>${escapeHtml(player.number)}</td>
@@ -1214,6 +1247,7 @@ function renderHistoryDetailBody(match) {
                 <td>${attackRate}%</td><td>${totalAttack}</td><td>${player.attack.P}</td><td>${player.attack.M}</td>
                 <td>${blockTotal}</td><td>${player.block.P}</td><td>${player.block.M}</td>
                 <td>${player.other.P}</td><td>${player.other.M}</td>
+                <td>${sp.att}</td><td>${sp.P}</td><td>${sp.M}</td>
             </tr>
         `;
     }).join("");
@@ -1229,6 +1263,7 @@ function renderHistoryDetailBody(match) {
                         <th>率</th><th>ス</th><th>アP</th><th>アM</th>
                         <th>ブ</th><th>ブP</th><th>ブM</th>
                         <th>他P</th><th>他M</th>
+                        <th>SPa</th><th>SPp</th><th>SPm</th>
                     </tr>
                 </thead>
                 <tbody>${tableRows}</tbody>
