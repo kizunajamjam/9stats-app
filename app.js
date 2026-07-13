@@ -243,7 +243,6 @@ function createEmptyStats() {
     return {
         serve: { P: 0, M: 0 },                // エース / 失点
         receive: { A: 0, B: 0, C: 0, D: 0 },  // 優 / 良 / 可 / 不可(失点)
-        attack: { P: 0, M: 0 },               // スパイクポイント / スパイク失点
         block: { P: 0, M: 0 },                // ブロックポイント / ブロック失点
         other: { P: 0, M: 0 },                // その他得点 / その他ミス
         spike: { att: 0, P: 0, M: 0 }         // スパイク打数 / スパイクポイント / スパイクミス
@@ -368,7 +367,7 @@ async function openMemoForViewingSet() {
     renderSetTabs();
 }
 
-// スタッツ記録セル15列分のHTMLを生成（記録中セットならボタン、それ以外なら閲覧専用表示）
+// スタッツ記録セル13列分のHTMLを生成（記録中セットならボタン、それ以外なら閲覧専用表示）
 function buildStatCellsHtml(playerId, stats, isLive) {
     // spike が無い古いデータへの後方互換
     const spike = stats.spike || { att: 0, P: 0, M: 0 };
@@ -379,15 +378,13 @@ function buildStatCellsHtml(playerId, stats, isLive) {
         { cls: "g-receive b", fn: "recordReceive", arg: "'B'", val: stats.receive.B },
         { cls: "g-receive c", fn: "recordReceive", arg: "'C'", val: stats.receive.C },
         { cls: "g-receive miss", fn: "recordReceive", arg: "'D'", val: stats.receive.D },
-        { cls: "g-attack point", fn: "recordAttack", arg: "'P'", val: stats.attack.P },
-        { cls: "g-attack miss", fn: "recordAttack", arg: "'M'", val: stats.attack.M },
+        { cls: "g-spike att", fn: "recordSpike", arg: "'att'", val: spike.att },
+        { cls: "g-spike point", fn: "recordSpike", arg: "'P'", val: spike.P },
+        { cls: "g-spike miss", fn: "recordSpike", arg: "'M'", val: spike.M },
         { cls: "g-block point", fn: "recordBlock", arg: "'P'", val: stats.block.P },
         { cls: "g-block miss", fn: "recordBlock", arg: "'M'", val: stats.block.M },
         { cls: "g-other point", fn: "recordOther", arg: "'P'", val: stats.other.P },
-        { cls: "g-other miss", fn: "recordOther", arg: "'M'", val: stats.other.M },
-        { cls: "g-spike att", fn: "recordSpike", arg: "'att'", val: spike.att },
-        { cls: "g-spike point", fn: "recordSpike", arg: "'P'", val: spike.P },
-        { cls: "g-spike miss", fn: "recordSpike", arg: "'M'", val: spike.M }
+        { cls: "g-other miss", fn: "recordOther", arg: "'M'", val: stats.other.M }
     ];
     return cells.map(c => isLive
         ? `<button class="cell-btn ${c.cls}" onclick="${c.fn}(${playerId}, ${c.arg})"><span class="count">${c.val}</span></button>`
@@ -698,25 +695,6 @@ function recordServe(rosterId, type) {
     saveState();
 }
 
-// アタック記録（スパイクポイント / スパイク失点）
-function recordAttack(rosterId, type) {
-    const player = getRosterMember(rosterId);
-    if (!player) return;
-    pushUndoSnapshot();
-    const stats = getOrCreateSetStats(state.currentSetIndex, rosterId);
-    stats.attack[type] += 1;
-
-    if (type === 'P') {
-        adjustScore('home', 1); // スパイクポイント
-    } else if (type === 'M') {
-        adjustScore('away', 1); // スパイク失点
-    }
-
-    resetServeState();
-    renderPlayers();
-    saveState();
-}
-
 // レシーブ記録（A:優 / B:良 / C:可 / D:不可=失点）
 function recordReceive(rosterId, type) {
     const player = getRosterMember(rosterId);
@@ -862,13 +840,11 @@ function buildCSVContent(matchInfo, players) {
     csvContent += "\n";
 
     // ヘッダー行
-    csvContent += "背番号,選手名,サーブ本数,サーブエース(P),サーブ失点(M),レシーブ優(A),レシーブ良(B),レシーブ可(C),レシーブ不可(D),スパイク決定率(%),スパイク本数,スパイク得点(P),スパイク失点(M),ブロック本数,ブロック得点(P),ブロック失点(M),その他得点(P),その他ミス(M),スパイク打数,スパイクポイント,スパイクミス\n";
+    csvContent += "背番号,選手名,サーブ本数,サーブエース(P),サーブ失点(M),レシーブ優(A),レシーブ良(B),レシーブ可(C),レシーブ不可(D),スパイク打数,スパイク得点(P),スパイク失点(M),ブロック本数,ブロック得点(P),ブロック失点(M),その他得点(P),その他ミス(M)\n";
 
     // 選手データ
     players.forEach(player => {
         const serveTotal = player.serve.P + player.serve.M;
-        const totalAttack = player.attack.P + player.attack.M;
-        const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
         const blockTotal = player.block.P + player.block.M;
         const sp = player.spike || { att: 0, P: 0, M: 0 };
 
@@ -877,10 +853,9 @@ function buildCSVContent(matchInfo, players) {
             csvField(player.name),
             serveTotal, player.serve.P, player.serve.M,
             player.receive.A, player.receive.B, player.receive.C, player.receive.D,
-            attackRate, totalAttack, player.attack.P, player.attack.M,
+            sp.att, sp.P, sp.M,
             blockTotal, player.block.P, player.block.M,
-            player.other.P, player.other.M,
-            sp.att, sp.P, sp.M
+            player.other.P, player.other.M
         ].join(",");
 
         csvContent += row + "\n";
@@ -929,7 +904,6 @@ function computeTotalsForRoster(roster, sets) {
             total.serve.P += s.serve.P; total.serve.M += s.serve.M;
             total.receive.A += s.receive.A; total.receive.B += s.receive.B;
             total.receive.C += s.receive.C; total.receive.D += s.receive.D;
-            total.attack.P += s.attack.P; total.attack.M += s.attack.M;
             total.block.P += s.block.P; total.block.M += s.block.M;
             total.other.P += s.other.P; total.other.M += s.other.M;
             if (s.spike) {
@@ -1234,8 +1208,6 @@ function renderHistoryDetailBody(match) {
 
     const tableRows = rows.map(player => {
         const serveTotal = player.serve.P + player.serve.M;
-        const totalAttack = player.attack.P + player.attack.M;
-        const attackRate = totalAttack > 0 ? ((player.attack.P / totalAttack) * 100).toFixed(1) : "0.0";
         const blockTotal = player.block.P + player.block.M;
         const sp = player.spike || { att: 0, P: 0, M: 0 };
         return `
@@ -1244,10 +1216,9 @@ function renderHistoryDetailBody(match) {
                 <td>${escapeHtml(player.name)}</td>
                 <td>${serveTotal}</td><td>${player.serve.P}</td><td>${player.serve.M}</td>
                 <td>${player.receive.A}</td><td>${player.receive.B}</td><td>${player.receive.C}</td><td>${player.receive.D}</td>
-                <td>${attackRate}%</td><td>${totalAttack}</td><td>${player.attack.P}</td><td>${player.attack.M}</td>
+                <td>${sp.att}</td><td>${sp.P}</td><td>${sp.M}</td>
                 <td>${blockTotal}</td><td>${player.block.P}</td><td>${player.block.M}</td>
                 <td>${player.other.P}</td><td>${player.other.M}</td>
-                <td>${sp.att}</td><td>${sp.P}</td><td>${sp.M}</td>
             </tr>
         `;
     }).join("");
@@ -1260,10 +1231,9 @@ function renderHistoryDetailBody(match) {
                         <th>番</th><th>名</th>
                         <th>サ</th><th>サP</th><th>サM</th>
                         <th>レA</th><th>レB</th><th>レC</th><th>レD</th>
-                        <th>率</th><th>ス</th><th>アP</th><th>アM</th>
+                        <th>SP打</th><th>SPp</th><th>SPm</th>
                         <th>ブ</th><th>ブP</th><th>ブM</th>
                         <th>他P</th><th>他M</th>
-                        <th>SPa</th><th>SPp</th><th>SPm</th>
                     </tr>
                 </thead>
                 <tbody>${tableRows}</tbody>

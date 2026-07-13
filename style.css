@@ -273,7 +273,7 @@ html.force-landscape.device-portrait #app-dialog-overlay.portrait-mode {
 .stats-table-header,
 .player-row {
     display: grid;
-    grid-template-columns: 24px 50px repeat(15, 1fr);
+    grid-template-columns: 24px 50px repeat(13, 1fr);
     gap: 3px;
 }
 
@@ -441,17 +441,15 @@ html.force-landscape.device-portrait #app-dialog-overlay.portrait-mode {
     border-color: var(--btn-border);
 }
 
-/* 項目グループごとの背景色分け（サーブ/レシーブ/アタック/ブロック/その他が一目で分かるようにする） */
+/* 項目グループごとの背景色分け（サーブ/レシーブ/スパイク/ブロック/その他が一目で分かるようにする） */
 .cell-btn.g-serve { background: #eaf2ff; border-color: #bcd6fb; }
 .cell-btn.g-receive { background: #eafcf3; border-color: #ade8c8; }
-.cell-btn.g-attack { background: #fff6ea; border-color: #fbdca0; }
 .cell-btn.g-block { background: #f5f0fe; border-color: #d6c0fa; }
 .cell-btn.g-other { background: #f1f4f6; border-color: #d7dee4; }
 .cell-btn.g-spike { background: #fff0f0; border-color: #fca5a5; }
 
 .stats-table-header .g-serve { color: var(--accent-blue); }
 .stats-table-header .g-receive { color: var(--accent-green); }
-.stats-table-header .g-attack { color: var(--accent-orange); }
 .stats-table-header .g-block { color: var(--accent-purple); }
 .stats-table-header .g-other { color: var(--text-secondary); }
 .stats-table-header .g-spike { color: #dc2626; }
