@@ -268,12 +268,12 @@ html.force-landscape.device-portrait #app-dialog-overlay.portrait-mode {
     box-shadow: 0 0 0 2px var(--text-primary);
 }
 
-/* 列構成（記録ボタンのみ・計算で出せる本数/決定率セルは省いてボタンを大きくする）:
-   番,名 | P,M(サーブ) | A,B,C,D(レシーブ) | P,M(アタック) | P,M(ブロック) | P,M(その他) */
+/* 列構成:
+   番,名 | P,M(サーブ) | A,B,C,D(レシーブ) | 打,P,M,率(スパイク) | P,M(ブロック) | P,M(その他) */
 .stats-table-header,
 .player-row {
     display: grid;
-    grid-template-columns: 24px 50px repeat(13, 1fr);
+    grid-template-columns: 24px 50px repeat(14, 1fr);
     gap: 3px;
 }
 
@@ -411,6 +411,11 @@ html.force-landscape.device-portrait #app-dialog-overlay.portrait-mode {
     font-size: 0.8rem;
     font-weight: 700;
     line-height: 1; /* 短い行でも数字が縦に切れないようにする */
+}
+
+/* 成功率セルは「100%」まで表示するため、狭い列でも隣のセルに隠れないよう文字を小さくする */
+.cell-btn.g-spike.rate .count {
+    font-size: 0.62rem;
 }
 
 /* 各種アクション色分け */

@@ -367,7 +367,13 @@ async function openMemoForViewingSet() {
     renderSetTabs();
 }
 
-// スタッツ記録セル13列分のHTMLを生成（記録中セットならボタン、それ以外なら閲覧専用表示）
+// スパイクの成功率（決定率）を計算する。P+Mが0のときは0.0を返す
+function calcSpikeRate(spike) {
+    const total = spike.P + spike.M;
+    return total > 0 ? ((spike.P / total) * 100).toFixed(1) : "0.0";
+}
+
+// スタッツ記録セル14列分のHTMLを生成（記録中セットならボタン、それ以外なら閲覧専用表示。成功率セルは常に閲覧専用）
 function buildStatCellsHtml(playerId, stats, isLive) {
     // spike が無い古いデータへの後方互換
     const spike = stats.spike || { att: 0, P: 0, M: 0 };
@@ -381,12 +387,13 @@ function buildStatCellsHtml(playerId, stats, isLive) {
         { cls: "g-spike att", fn: "recordSpike", arg: "'att'", val: spike.att },
         { cls: "g-spike point", fn: "recordSpike", arg: "'P'", val: spike.P },
         { cls: "g-spike miss", fn: "recordSpike", arg: "'M'", val: spike.M },
+        { cls: "g-spike rate", val: `${Math.round(spike.P + spike.M > 0 ? (spike.P / (spike.P + spike.M)) * 100 : 0)}%`, readonly: true },
         { cls: "g-block point", fn: "recordBlock", arg: "'P'", val: stats.block.P },
         { cls: "g-block miss", fn: "recordBlock", arg: "'M'", val: stats.block.M },
         { cls: "g-other point", fn: "recordOther", arg: "'P'", val: stats.other.P },
         { cls: "g-other miss", fn: "recordOther", arg: "'M'", val: stats.other.M }
     ];
-    return cells.map(c => isLive
+    return cells.map(c => (isLive && !c.readonly)
         ? `<button class="cell-btn ${c.cls}" onclick="${c.fn}(${playerId}, ${c.arg})"><span class="count">${c.val}</span></button>`
         : `<div class="cell-btn readonly ${c.cls}"><span class="count">${c.val}</span></div>`
     ).join("");
@@ -840,7 +847,7 @@ function buildCSVContent(matchInfo, players) {
     csvContent += "\n";
 
     // ヘッダー行
-    csvContent += "背番号,選手名,サーブ本数,サーブエース(P),サーブ失点(M),レシーブ優(A),レシーブ良(B),レシーブ可(C),レシーブ不可(D),スパイク打数,スパイク得点(P),スパイク失点(M),ブロック本数,ブロック得点(P),ブロック失点(M),その他得点(P),その他ミス(M)\n";
+    csvContent += "背番号,選手名,サーブ本数,サーブエース(P),サーブ失点(M),レシーブ優(A),レシーブ良(B),レシーブ可(C),レシーブ不可(D),スパイク打数,スパイク得点(P),スパイク失点(M),スパイク成功率(%),ブロック本数,ブロック得点(P),ブロック失点(M),その他得点(P),その他ミス(M)\n";
 
     // 選手データ
     players.forEach(player => {
@@ -853,7 +860,7 @@ function buildCSVContent(matchInfo, players) {
             csvField(player.name),
             serveTotal, player.serve.P, player.serve.M,
             player.receive.A, player.receive.B, player.receive.C, player.receive.D,
-            sp.att, sp.P, sp.M,
+            sp.att, sp.P, sp.M, calcSpikeRate(sp),
             blockTotal, player.block.P, player.block.M,
             player.other.P, player.other.M
         ].join(",");
@@ -1216,7 +1223,7 @@ function renderHistoryDetailBody(match) {
                 <td>${escapeHtml(player.name)}</td>
                 <td>${serveTotal}</td><td>${player.serve.P}</td><td>${player.serve.M}</td>
                 <td>${player.receive.A}</td><td>${player.receive.B}</td><td>${player.receive.C}</td><td>${player.receive.D}</td>
-                <td>${sp.att}</td><td>${sp.P}</td><td>${sp.M}</td>
+                <td>${sp.att}</td><td>${sp.P}</td><td>${sp.M}</td><td>${calcSpikeRate(sp)}%</td>
                 <td>${blockTotal}</td><td>${player.block.P}</td><td>${player.block.M}</td>
                 <td>${player.other.P}</td><td>${player.other.M}</td>
             </tr>
@@ -1231,7 +1238,7 @@ function renderHistoryDetailBody(match) {
                         <th>番</th><th>名</th>
                         <th>サ</th><th>サP</th><th>サM</th>
                         <th>レA</th><th>レB</th><th>レC</th><th>レD</th>
-                        <th>SP打</th><th>SPp</th><th>SPm</th>
+                        <th>SP打</th><th>SPp</th><th>SPm</th><th>SP率</th>
                         <th>ブ</th><th>ブP</th><th>ブM</th>
                         <th>他P</th><th>他M</th>
                     </tr>
