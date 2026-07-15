@@ -369,7 +369,7 @@ async function openMemoForViewingSet() {
 
 // スパイクの成功率（決定率）を計算する。P+Mが0のときは0.0を返す
 function calcSpikeRate(spike) {
-    const total = spike.P + spike.M;
+    const total = spike.att + spike.P + spike.M;
     return total > 0 ? ((spike.P / total) * 100).toFixed(1) : "0.0";
 }
 
