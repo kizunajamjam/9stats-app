@@ -367,10 +367,11 @@ async function openMemoForViewingSet() {
     renderSetTabs();
 }
 
-// スパイクの成功率（決定率）を計算する。P+Mが0のときは0.0を返す
+// スパイクの成功率（決定率）を計算する。打数が0のときは0.0を返す
 function calcSpikeRate(spike) {
-    const total = spike.att + spike.P + spike.M;
-    return total > 0 ? ((spike.P / total) * 100).toFixed(1) : "0.0";
+    const attempts = Number(spike?.att || 0);
+    const points = Number(spike?.P || 0);
+    return attempts > 0 ? ((points / attempts) * 100).toFixed(1) : "0.0";
 }
 
 // スタッツ記録セル14列分のHTMLを生成（記録中セットならボタン、それ以外なら閲覧専用表示。成功率セルは常に閲覧専用）
@@ -387,7 +388,7 @@ function buildStatCellsHtml(playerId, stats, isLive) {
         { cls: "g-spike att", fn: "recordSpike", arg: "'att'", val: spike.att },
         { cls: "g-spike point", fn: "recordSpike", arg: "'P'", val: spike.P },
         { cls: "g-spike miss", fn: "recordSpike", arg: "'M'", val: spike.M },
-        { cls: "g-spike rate", val: `${Math.round(spike.P + spike.M > 0 ? (spike.P / (spike.P + spike.M)) * 100 : 0)}%`, readonly: true },
+        { cls: "g-spike rate", val: `${calcSpikeRate(spike)}%`, readonly: true },
         { cls: "g-block point", fn: "recordBlock", arg: "'P'", val: stats.block.P },
         { cls: "g-block miss", fn: "recordBlock", arg: "'M'", val: stats.block.M },
         { cls: "g-other point", fn: "recordOther", arg: "'P'", val: stats.other.P },
