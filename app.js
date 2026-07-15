@@ -767,6 +767,11 @@ function recordSpike(rosterId, type) {
     if (!stats.spike) stats.spike = { att: 0, P: 0, M: 0 }; // 旧データ互換
     stats.spike[type] += 1;
 
+//スパイクポイント、スパイクミスは打数カウントにもカウント
+if (type === 'P' || type === 'M') {
+    stats.spike.att += 1;
+}
+
     if (type === 'P') {
         adjustScore('home', 1); // スパイクポイント
     } else if (type === 'M') {
